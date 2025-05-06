@@ -15,6 +15,11 @@ const Auth: React.FC = () => {
   
   const { user, signIn, signUp } = useAuth();
 
+  // Generate a 6-digit user ID
+  const generateUserID = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
   // Redirect if already logged in
   if (user) {
     return <Navigate to="/chats" replace />;
@@ -26,10 +31,17 @@ const Auth: React.FC = () => {
 
     try {
       if (isSignUp) {
-        await signUp(email, password, username);
+        const userId = generateUserID();
+        await signUp(email, password, username, userId);
+        toast({
+          title: "Account created",
+          description: `Your Wispa user ID: ${userId}`,
+        });
       } else {
         await signIn(email, password);
       }
+    } catch (error) {
+      console.error("Authentication error:", error);
     } finally {
       setLoading(false);
     }

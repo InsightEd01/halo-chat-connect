@@ -13,6 +13,7 @@ import ChatDetail from "./pages/ChatDetail";
 import Calls from "./pages/Calls";
 import Status from "./pages/Status";
 import NewChat from "./pages/NewChat";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
               <Route path="/calls" element={<Calls />} />
               <Route path="/status" element={<Status />} />
               <Route path="/new-chat" element={<NewChat />} />
+              <Route path="/profile" element={<Profile />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />
