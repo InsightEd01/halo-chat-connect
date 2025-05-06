@@ -81,13 +81,17 @@ const NewChat: React.FC = () => {
       </header>
       
       <div className="p-3 bg-white border-b">
-        <Input
-          placeholder={addingById ? "Enter 6-digit User ID" : "Search contacts..."}
-          value={addingById ? idQuery : searchQuery}
-          onChange={e => addingById ? setIdQuery(e.target.value) : setSearchQuery(e.target.value)}
-          className="w-full"
-          prefix={<Search className="h-4 w-4 text-gray-400" />}
-        />
+        <div className="relative w-full">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-gray-400" />
+          </div>
+          <Input
+            placeholder={addingById ? "Enter 6-digit User ID" : "Search contacts..."}
+            value={addingById ? idQuery : searchQuery}
+            onChange={e => addingById ? setIdQuery(e.target.value) : setSearchQuery(e.target.value)}
+            className="w-full pl-10"
+          />
+        </div>
         
         {addingById ? (
           <div className="flex mt-2 space-x-2">
