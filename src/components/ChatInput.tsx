@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { send, paperclip, mic, smile } from 'lucide-react';
+import { Send, Paperclip, Mic, Smile } from 'lucide-react';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
@@ -21,10 +21,10 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
   return (
     <form onSubmit={handleSubmit} className="bg-white p-3 flex items-center border-t">
       <button type="button" className="p-2 text-gray-500 rounded-full hover:bg-gray-100">
-        <smile className="h-6 w-6" />
+        <Smile className="h-6 w-6" />
       </button>
       <button type="button" className="p-2 text-gray-500 rounded-full hover:bg-gray-100">
-        <paperclip className="h-6 w-6" />
+        <Paperclip className="h-6 w-6" />
       </button>
       <input
         type="text"
@@ -38,7 +38,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
         disabled={!message.trim()}
         className="p-2 bg-wispa-500 text-white rounded-full disabled:bg-gray-300 disabled:cursor-not-allowed"
       >
-        <send className="h-5 w-5" />
+        <Send className="h-5 w-5" />
       </button>
     </form>
   );

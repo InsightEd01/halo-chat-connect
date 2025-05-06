@@ -1,10 +1,21 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { phone, video, arrowLeft, moreVertical } from 'lucide-react';
+import { Phone, Video, ArrowLeft, MoreVertical } from 'lucide-react';
 import Avatar from '@/components/Avatar';
 import ChatBubble from '@/components/ChatBubble';
 import ChatInput from '@/components/ChatInput';
+
+// Define a common message type to fix TypeScript errors
+type MessageStatus = 'sent' | 'delivered' | 'read';
+
+interface ChatMessage {
+  id: string;
+  content: string;
+  timestamp: string;
+  isOwnMessage: boolean;
+  status?: MessageStatus;
+}
 
 // Sample chat data
 const getSampleChat = (id: string) => {
@@ -16,12 +27,12 @@ const getSampleChat = (id: string) => {
       status: 'online' as const,
       messages: [
         { id: '1', content: 'Hey there!', timestamp: '10:30 AM', isOwnMessage: false },
-        { id: '2', content: 'Hi Sarah! How are you doing?', timestamp: '10:32 AM', isOwnMessage: true, status: 'read' as const },
+        { id: '2', content: 'Hi Sarah! How are you doing?', timestamp: '10:32 AM', isOwnMessage: true, status: 'read' as MessageStatus },
         { id: '3', content: "I'm good, thanks for asking. Are we still meeting tomorrow?", timestamp: '10:33 AM', isOwnMessage: false },
-        { id: '4', content: 'Yes, definitely! Same time and place?', timestamp: '10:34 AM', isOwnMessage: true, status: 'read' as const },
+        { id: '4', content: 'Yes, definitely! Same time and place?', timestamp: '10:34 AM', isOwnMessage: true, status: 'read' as MessageStatus },
         { id: '5', content: 'Perfect! Looking forward to it.', timestamp: '10:36 AM', isOwnMessage: false },
         { id: '6', content: 'Let me know when you arrive', timestamp: '10:45 AM', isOwnMessage: false },
-      ]
+      ] as ChatMessage[]
     },
     '2': {
       id: '2',
@@ -29,10 +40,10 @@ const getSampleChat = (id: string) => {
       avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
       status: 'away' as const,
       messages: [
-        { id: '1', content: 'Hey Mike, did you get my email?', timestamp: '9:15 AM', isOwnMessage: true, status: 'read' as const },
+        { id: '1', content: 'Hey Mike, did you get my email?', timestamp: '9:15 AM', isOwnMessage: true, status: 'read' as MessageStatus },
         { id: '2', content: 'Yes, just saw it', timestamp: '9:20 AM', isOwnMessage: false },
         { id: '3', content: 'The meeting has been rescheduled', timestamp: '9:30 AM', isOwnMessage: false },
-      ]
+      ] as ChatMessage[]
     },
     '3': {
       id: '3',
@@ -41,9 +52,9 @@ const getSampleChat = (id: string) => {
       status: 'offline' as const,
       messages: [
         { id: '1', content: 'Thanks for helping me yesterday with the project!', timestamp: 'Yesterday', isOwnMessage: false },
-        { id: '2', content: 'No problem at all! Happy to help anytime.', timestamp: 'Yesterday', isOwnMessage: true, status: 'read' as const },
+        { id: '2', content: 'No problem at all! Happy to help anytime.', timestamp: 'Yesterday', isOwnMessage: true, status: 'read' as MessageStatus },
         { id: '3', content: 'Thanks for your help yesterday!', timestamp: 'Yesterday', isOwnMessage: false },
-      ]
+      ] as ChatMessage[]
     },
     '4': {
       id: '4',
@@ -52,8 +63,8 @@ const getSampleChat = (id: string) => {
       status: null,
       messages: [
         { id: '1', content: 'Did you see the new project requirements?', timestamp: 'Yesterday', isOwnMessage: false },
-        { id: '2', content: 'Yes, there are quite a few changes.', timestamp: 'Yesterday', isOwnMessage: true, status: 'delivered' as const },
-      ]
+        { id: '2', content: 'Yes, there are quite a few changes.', timestamp: 'Yesterday', isOwnMessage: true, status: 'delivered' as MessageStatus },
+      ] as ChatMessage[]
     },
     '5': {
       id: '5',
@@ -62,8 +73,8 @@ const getSampleChat = (id: string) => {
       status: null,
       messages: [
         { id: '1', content: "Let's catch up this weekend!", timestamp: 'Wednesday', isOwnMessage: false },
-        { id: '2', content: "I'd love to! What day works for you?", timestamp: 'Wednesday', isOwnMessage: true, status: 'sent' as const },
-      ]
+        { id: '2', content: "I'd love to! What day works for you?", timestamp: 'Wednesday', isOwnMessage: true, status: 'sent' as MessageStatus },
+      ] as ChatMessage[]
     }
   };
 
@@ -73,7 +84,7 @@ const getSampleChat = (id: string) => {
 const ChatDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [chat, setChat] = useState(getSampleChat(id || '1'));
-  const [messages, setMessages] = useState(chat?.messages || []);
+  const [messages, setMessages] = useState<ChatMessage[]>(chat?.messages || []);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -88,12 +99,12 @@ const ChatDetail: React.FC = () => {
   }, [messages]);
 
   const handleSendMessage = (content: string) => {
-    const newMessage = {
+    const newMessage: ChatMessage = {
       id: `new-${Date.now()}`,
       content,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isOwnMessage: true,
-      status: 'sent' as const
+      status: 'sent' as MessageStatus
     };
 
     setMessages([...messages, newMessage]);
@@ -112,7 +123,7 @@ const ChatDetail: React.FC = () => {
       <header className="wispa-header">
         <div className="flex items-center">
           <Link to="/chats" className="mr-2">
-            <arrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5" />
           </Link>
           <Avatar src={chat.avatar} alt={chat.name} status={chat.status} />
           <div className="ml-3">
@@ -127,13 +138,13 @@ const ChatDetail: React.FC = () => {
         
         <div className="flex space-x-3">
           <button className="p-2 rounded-full hover:bg-wispa-600">
-            <phone className="h-5 w-5" />
+            <Phone className="h-5 w-5" />
           </button>
           <button className="p-2 rounded-full hover:bg-wispa-600">
-            <video className="h-5 w-5" />
+            <Video className="h-5 w-5" />
           </button>
           <button className="p-2 rounded-full hover:bg-wispa-600">
-            <moreVertical className="h-5 w-5" />
+            <MoreVertical className="h-5 w-5" />
           </button>
         </div>
       </header>

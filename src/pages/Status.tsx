@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { plus, camera } from 'lucide-react';
+import { Plus, Camera } from 'lucide-react';
 import NavBar from '@/components/NavBar';
 import Avatar from '@/components/Avatar';
 import EmptyState from '@/components/EmptyState';
@@ -53,7 +53,7 @@ const Status: React.FC = () => {
                 className={myStatus.hasStatus ? "border-2 border-wispa-500" : ""}
               />
               <button className="absolute bottom-0 right-0 bg-wispa-500 text-white p-1.5 rounded-full">
-                <plus className="h-4 w-4" />
+                <Plus className="h-4 w-4" />
               </button>
             </div>
             <div className="ml-3">
@@ -66,7 +66,7 @@ const Status: React.FC = () => {
             </div>
           </div>
           <button className="mt-4 flex items-center text-wispa-500 font-medium text-sm">
-            <camera className="h-4 w-4 mr-1" />
+            <Camera className="h-4 w-4 mr-1" />
             Create photo status
           </button>
         </div>

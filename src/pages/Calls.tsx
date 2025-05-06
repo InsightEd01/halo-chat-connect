@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { phone, video } from 'lucide-react';
+import { Phone, Video } from 'lucide-react';
 import NavBar from '@/components/NavBar';
 import Avatar from '@/components/Avatar';
 import EmptyState from '@/components/EmptyState';
@@ -82,9 +82,9 @@ const Calls: React.FC = () => {
               
               <button className="p-2 text-wispa-500 hover:bg-gray-100 rounded-full">
                 {call.type === 'video' ? (
-                  <video className="h-5 w-5" />
+                  <Video className="h-5 w-5" />
                 ) : (
-                  <phone className="h-5 w-5" />
+                  <Phone className="h-5 w-5" />
                 )}
               </button>
             </div>
@@ -93,7 +93,7 @@ const Calls: React.FC = () => {
           <EmptyState
             title="No call history yet"
             description="Make a call to see your call history here"
-            icon={<phone className="h-12 w-12 mb-4 text-wispa-500" />}
+            icon={<Phone className="h-12 w-12 mb-4 text-wispa-500" />}
           />
         )}
       </div>

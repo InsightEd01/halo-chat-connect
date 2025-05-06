@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { arrowLeft, search } from 'lucide-react';
+import { ArrowLeft, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import Avatar from '@/components/Avatar';
 import EmptyState from '@/components/EmptyState';
@@ -74,7 +74,7 @@ const NewChat: React.FC = () => {
       <header className="wispa-header">
         <div className="flex items-center">
           <Link to="/chats" className="mr-3">
-            <arrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5" />
           </Link>
           <h2 className="font-medium">New Chat</h2>
         </div>
@@ -86,7 +86,7 @@ const NewChat: React.FC = () => {
           value={addingById ? idQuery : searchQuery}
           onChange={e => addingById ? setIdQuery(e.target.value) : setSearchQuery(e.target.value)}
           className="w-full"
-          prefix={<search className="h-4 w-4 text-gray-400" />}
+          prefix={<Search className="h-4 w-4 text-gray-400" />}
         />
         
         {addingById ? (

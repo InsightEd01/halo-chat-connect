@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { search, plus } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import ChatListItem from '@/components/ChatListItem';
 import NavBar from '@/components/NavBar';
 import EmptyState from '@/components/EmptyState';
@@ -70,7 +70,7 @@ const ChatList: React.FC = () => {
         <h1 className="text-2xl font-bold">WispaChat</h1>
         <div className="flex space-x-2">
           <button className="p-2 rounded-full hover:bg-wispa-600">
-            <search className="h-5 w-5" />
+            <Search className="h-5 w-5" />
           </button>
         </div>
       </header>
@@ -81,7 +81,7 @@ const ChatList: React.FC = () => {
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           className="w-full"
-          prefix={<search className="h-4 w-4 text-gray-400" />}
+          prefix={<Search className="h-4 w-4 text-gray-400" />}
         />
       </div>
       
@@ -114,7 +114,7 @@ const ChatList: React.FC = () => {
         to="/new-chat"
         className="absolute bottom-20 right-6 bg-wispa-500 text-white rounded-full p-4 shadow-lg hover:bg-wispa-600 transition-colors"
       >
-        <plus className="h-6 w-6" />
+        <Plus className="h-6 w-6" />
       </Link>
     </div>
   );
