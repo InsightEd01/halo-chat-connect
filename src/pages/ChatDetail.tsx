@@ -101,7 +101,7 @@ const ChatDetail: React.FC = () => {
             content={message.content}
             timestamp={formatMessageTimestamp(message.created_at)}
             isOwnMessage={message.user_id === user?.id}
-            status={message.user_id === user?.id ? message.status : undefined}
+            status={(message.status as 'sent' | 'delivered' | 'read') || 'sent'}
           />
         ))}
         <div ref={messagesEndRef} />
