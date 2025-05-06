@@ -49,7 +49,7 @@ const sampleChats = [
     id: '5',
     name: 'Amy Wilson',
     avatar: 'https://randomuser.me/api/portraits/women/67.jpg',
-    lastMessage: 'Let's catch up this weekend!',
+    lastMessage: "Let's catch up this weekend!",
     timestamp: 'Wednesday',
     unreadCount: 0,
     status: null

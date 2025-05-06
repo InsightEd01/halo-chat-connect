@@ -17,7 +17,7 @@ const getSampleChat = (id: string) => {
       messages: [
         { id: '1', content: 'Hey there!', timestamp: '10:30 AM', isOwnMessage: false },
         { id: '2', content: 'Hi Sarah! How are you doing?', timestamp: '10:32 AM', isOwnMessage: true, status: 'read' as const },
-        { id: '3', content: 'I\'m good, thanks for asking. Are we still meeting tomorrow?', timestamp: '10:33 AM', isOwnMessage: false },
+        { id: '3', content: "I'm good, thanks for asking. Are we still meeting tomorrow?", timestamp: '10:33 AM', isOwnMessage: false },
         { id: '4', content: 'Yes, definitely! Same time and place?', timestamp: '10:34 AM', isOwnMessage: true, status: 'read' as const },
         { id: '5', content: 'Perfect! Looking forward to it.', timestamp: '10:36 AM', isOwnMessage: false },
         { id: '6', content: 'Let me know when you arrive', timestamp: '10:45 AM', isOwnMessage: false },
@@ -61,8 +61,8 @@ const getSampleChat = (id: string) => {
       avatar: 'https://randomuser.me/api/portraits/women/67.jpg',
       status: null,
       messages: [
-        { id: '1', content: 'Let's catch up this weekend!', timestamp: 'Wednesday', isOwnMessage: false },
-        { id: '2', content: 'I\'d love to! What day works for you?', timestamp: 'Wednesday', isOwnMessage: true, status: 'sent' as const },
+        { id: '1', content: "Let's catch up this weekend!", timestamp: 'Wednesday', isOwnMessage: false },
+        { id: '2', content: "I'd love to! What day works for you?", timestamp: 'Wednesday', isOwnMessage: true, status: 'sent' as const },
       ]
     }
   };
