@@ -5,19 +5,30 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 
 const Auth: React.FC = () => {
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [userId, setUserId] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   
   const { user, signIn, signUp } = useAuth();
 
+  // Generate a 6-digit user ID on component mount for signup
+  useEffect(() => {
+    generateUserID();
+  }, []);
+
   // Generate a 6-digit user ID
   const generateUserID = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    const newId = Math.floor(100000 + Math.random() * 900000).toString();
+    setUserId(newId);
+    return newId;
   };
 
   // Redirect if already logged in
@@ -30,8 +41,7 @@ const Auth: React.FC = () => {
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        const userId = generateUserID();
+      if (activeTab === "signup") {
         await signUp(email, password, username, userId);
         toast({
           title: "Account created",
@@ -54,6 +64,10 @@ const Auth: React.FC = () => {
     });
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
     <div className="wispa-container bg-gray-50">
       <div className="flex flex-col h-full">
@@ -68,60 +82,165 @@ const Auth: React.FC = () => {
               </div>
               <h1 className="text-3xl font-bold text-gray-900">WispaChat</h1>
               <p className="mt-2 text-gray-600">
-                {isSignUp ? 'Create a new account' : 'Sign in to your account'}
+                {activeTab === "signup" ? 'Create your account' : 'Welcome back'}
               </p>
             </div>
 
-            <form onSubmit={handleAuth} className="space-y-4">
-              {isSignUp && (
-                <div>
-                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                  <Input 
-                    id="username"
-                    type="text" 
-                    placeholder="Enter your username"
-                    value={username}
-                    onChange={e => setUsername(e.target.value)}
-                    className="w-full"
-                    required
-                  />
-                </div>
-              )}
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "signin" | "signup")} className="w-full">
+              <TabsList className="grid grid-cols-2 w-full mb-6">
+                <TabsTrigger value="signin">Sign In</TabsTrigger>
+                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="signin">
+                <form onSubmit={handleAuth} className="space-y-4">
+                  <div className="space-y-1">
+                    <label htmlFor="signin-email" className="block text-sm font-medium text-gray-700">Email</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-5 w-5" />
+                      <Input 
+                        id="signin-email"
+                        type="email" 
+                        placeholder="name@example.com"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <Input 
-                  id="email"
-                  type="email" 
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full"
-                  required
-                />
-              </div>
+                  <div className="space-y-1">
+                    <label htmlFor="signin-password" className="block text-sm font-medium text-gray-700">Password</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-5 w-5" />
+                      <Input 
+                        id="signin-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        className="pl-10 pr-10"
+                        required
+                      />
+                      <button 
+                        type="button" 
+                        onClick={togglePasswordVisibility} 
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                      >
+                        {showPassword ? 
+                          <EyeOff className="h-5 w-5 text-gray-500" /> : 
+                          <Eye className="h-5 w-5 text-gray-500" />
+                        }
+                      </button>
+                    </div>
+                  </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <Input 
-                  id="password"
-                  type="password" 
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full"
-                  required
-                />
-              </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-wispa-500 hover:bg-wispa-600"
+                    disabled={loading}
+                  >
+                    {loading ? 'Signing in...' : 'Sign In'}
+                  </Button>
+                </form>
+              </TabsContent>
+              
+              <TabsContent value="signup">
+                <form onSubmit={handleAuth} className="space-y-4">
+                  <div className="space-y-1">
+                    <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-5 w-5" />
+                      <Input 
+                        id="username"
+                        type="text" 
+                        placeholder="Your username"
+                        value={username}
+                        onChange={e => setUsername(e.target.value)}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
 
-              <Button 
-                type="submit" 
-                className="w-full bg-wispa-500 hover:bg-wispa-600"
-                disabled={loading}
-              >
-                {loading ? 'Processing...' : isSignUp ? 'Sign Up' : 'Sign In'}
-              </Button>
-            </form>
+                  <div className="space-y-1">
+                    <label htmlFor="signup-email" className="block text-sm font-medium text-gray-700">Email</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-5 w-5" />
+                      <Input 
+                        id="signup-email"
+                        type="email" 
+                        placeholder="name@example.com"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label htmlFor="signup-password" className="block text-sm font-medium text-gray-700">Password</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-5 w-5" />
+                      <Input 
+                        id="signup-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        className="pl-10 pr-10"
+                        required
+                      />
+                      <button 
+                        type="button" 
+                        onClick={togglePasswordVisibility} 
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                      >
+                        {showPassword ? 
+                          <EyeOff className="h-5 w-5 text-gray-500" /> : 
+                          <Eye className="h-5 w-5 text-gray-500" />
+                        }
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex justify-between">
+                      <label htmlFor="userid" className="block text-sm font-medium text-gray-700">
+                        Your User ID
+                      </label>
+                      <button 
+                        type="button" 
+                        onClick={generateUserID} 
+                        className="text-xs text-wispa-600 hover:text-wispa-700"
+                      >
+                        Generate New
+                      </button>
+                    </div>
+                    <Input 
+                      id="userid"
+                      type="text" 
+                      value={userId}
+                      readOnly
+                      className="bg-gray-50 text-center font-mono text-lg"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Save your user ID. You'll need it to connect with friends.
+                    </p>
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-wispa-500 hover:bg-wispa-600"
+                    disabled={loading}
+                  >
+                    {loading ? 'Creating account...' : 'Create Account'}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
 
             <div className="mt-6 relative">
               <div className="absolute inset-0 flex items-center">
@@ -149,18 +268,8 @@ const Auth: React.FC = () => {
                     <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/>
                   </g>
                 </svg>
-                Sign in with Google
+                Continue with Google
               </Button>
-            </div>
-
-            <div className="mt-6 text-center">
-              <button 
-                type="button" 
-                className="text-sm text-wispa-600 hover:text-wispa-700"
-                onClick={() => setIsSignUp(!isSignUp)}
-              >
-                {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
-              </button>
             </div>
           </div>
         </div>
