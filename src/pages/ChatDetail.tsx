@@ -1,119 +1,65 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Phone, Video, ArrowLeft, MoreVertical } from 'lucide-react';
 import Avatar from '@/components/Avatar';
 import ChatBubble from '@/components/ChatBubble';
 import ChatInput from '@/components/ChatInput';
-
-// Define a common message type to fix TypeScript errors
-type MessageStatus = 'sent' | 'delivered' | 'read';
-
-interface ChatMessage {
-  id: string;
-  content: string;
-  timestamp: string;
-  isOwnMessage: boolean;
-  status?: MessageStatus;
-}
-
-// Sample chat data
-const getSampleChat = (id: string) => {
-  const contacts = {
-    '1': {
-      id: '1',
-      name: 'Sarah Johnson',
-      avatar: 'https://randomuser.me/api/portraits/women/12.jpg',
-      status: 'online' as const,
-      messages: [
-        { id: '1', content: 'Hey there!', timestamp: '10:30 AM', isOwnMessage: false },
-        { id: '2', content: 'Hi Sarah! How are you doing?', timestamp: '10:32 AM', isOwnMessage: true, status: 'read' as MessageStatus },
-        { id: '3', content: "I'm good, thanks for asking. Are we still meeting tomorrow?", timestamp: '10:33 AM', isOwnMessage: false },
-        { id: '4', content: 'Yes, definitely! Same time and place?', timestamp: '10:34 AM', isOwnMessage: true, status: 'read' as MessageStatus },
-        { id: '5', content: 'Perfect! Looking forward to it.', timestamp: '10:36 AM', isOwnMessage: false },
-        { id: '6', content: 'Let me know when you arrive', timestamp: '10:45 AM', isOwnMessage: false },
-      ] as ChatMessage[]
-    },
-    '2': {
-      id: '2',
-      name: 'Mike Peterson',
-      avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-      status: 'away' as const,
-      messages: [
-        { id: '1', content: 'Hey Mike, did you get my email?', timestamp: '9:15 AM', isOwnMessage: true, status: 'read' as MessageStatus },
-        { id: '2', content: 'Yes, just saw it', timestamp: '9:20 AM', isOwnMessage: false },
-        { id: '3', content: 'The meeting has been rescheduled', timestamp: '9:30 AM', isOwnMessage: false },
-      ] as ChatMessage[]
-    },
-    '3': {
-      id: '3',
-      name: 'Jennifer Williams',
-      avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-      status: 'offline' as const,
-      messages: [
-        { id: '1', content: 'Thanks for helping me yesterday with the project!', timestamp: 'Yesterday', isOwnMessage: false },
-        { id: '2', content: 'No problem at all! Happy to help anytime.', timestamp: 'Yesterday', isOwnMessage: true, status: 'read' as MessageStatus },
-        { id: '3', content: 'Thanks for your help yesterday!', timestamp: 'Yesterday', isOwnMessage: false },
-      ] as ChatMessage[]
-    },
-    '4': {
-      id: '4',
-      name: 'David Chen',
-      avatar: 'https://randomuser.me/api/portraits/men/46.jpg',
-      status: null,
-      messages: [
-        { id: '1', content: 'Did you see the new project requirements?', timestamp: 'Yesterday', isOwnMessage: false },
-        { id: '2', content: 'Yes, there are quite a few changes.', timestamp: 'Yesterday', isOwnMessage: true, status: 'delivered' as MessageStatus },
-      ] as ChatMessage[]
-    },
-    '5': {
-      id: '5',
-      name: 'Amy Wilson',
-      avatar: 'https://randomuser.me/api/portraits/women/67.jpg',
-      status: null,
-      messages: [
-        { id: '1', content: "Let's catch up this weekend!", timestamp: 'Wednesday', isOwnMessage: false },
-        { id: '2', content: "I'd love to! What day works for you?", timestamp: 'Wednesday', isOwnMessage: true, status: 'sent' as MessageStatus },
-      ] as ChatMessage[]
-    }
-  };
-
-  return contacts[id as keyof typeof contacts];
-};
+import { useChat, useSendMessage } from '@/services/chatService';
+import { useAuth } from '@/contexts/AuthContext';
+import { format } from 'date-fns';
 
 const ChatDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [chat, setChat] = useState(getSampleChat(id || '1'));
-  const [messages, setMessages] = useState<ChatMessage[]>(chat?.messages || []);
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const { 
+    data: chat, 
+    isLoading, 
+    isError 
+  } = useChat(id);
+  
+  const { 
+    mutate: sendMessage, 
+    isPending: isSending 
+  } = useSendMessage();
 
   useEffect(() => {
-    // Update chat when ID changes
-    setChat(getSampleChat(id || '1'));
-    setMessages(getSampleChat(id || '1')?.messages || []);
-  }, [id]);
-
-  useEffect(() => {
-    // Scroll to bottom of message list
+    // Scroll to bottom of message list when messages change
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [chat?.messages]);
+
+  // Get the other participant (not current user)
+  const otherParticipant = chat?.participants.find(p => p.id !== user?.id);
 
   const handleSendMessage = (content: string) => {
-    const newMessage: ChatMessage = {
-      id: `new-${Date.now()}`,
-      content,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isOwnMessage: true,
-      status: 'sent' as MessageStatus
-    };
-
-    setMessages([...messages, newMessage]);
+    if (!id) return;
+    
+    sendMessage({ chatId: id, content });
   };
 
-  if (!chat) {
+  const formatMessageTimestamp = (timestamp: string) => {
+    try {
+      return format(new Date(timestamp), 'p'); // Format as '12:34 PM'
+    } catch (e) {
+      return timestamp;
+    }
+  };
+
+  if (isLoading) {
     return (
       <div className="wispa-container flex items-center justify-center">
-        <p>Chat not found</p>
+        <p>Loading conversation...</p>
+      </div>
+    );
+  }
+
+  if (isError || !chat || !otherParticipant) {
+    return (
+      <div className="wispa-container flex items-center justify-center">
+        <p>Conversation not found</p>
       </div>
     );
   }
@@ -125,13 +71,12 @@ const ChatDetail: React.FC = () => {
           <Link to="/chats" className="mr-2">
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <Avatar src={chat.avatar} alt={chat.name} status={chat.status} />
+          <Avatar src={otherParticipant.avatar_url || undefined} alt={otherParticipant.username} status={null} />
           <div className="ml-3">
-            <h2 className="font-medium">{chat.name}</h2>
+            <h2 className="font-medium">{otherParticipant.username}</h2>
             <p className="text-xs text-wispa-100">
-              {chat.status === 'online' ? 'Online' : 
-               chat.status === 'away' ? 'Away' : 
-               'Last seen recently'}
+              {/* We're not tracking online status yet */}
+              Last seen recently
             </p>
           </div>
         </div>
@@ -150,19 +95,19 @@ const ChatDetail: React.FC = () => {
       </header>
       
       <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-        {messages.map(message => (
+        {chat.messages.map(message => (
           <ChatBubble
             key={message.id}
             content={message.content}
-            timestamp={message.timestamp}
-            isOwnMessage={message.isOwnMessage}
-            status={message.status}
+            timestamp={formatMessageTimestamp(message.created_at)}
+            isOwnMessage={message.user_id === user?.id}
+            status={message.user_id === user?.id ? message.status : undefined}
           />
         ))}
         <div ref={messagesEndRef} />
       </div>
       
-      <ChatInput onSendMessage={handleSendMessage} />
+      <ChatInput onSendMessage={handleSendMessage} disabled={isSending} />
     </div>
   );
 };

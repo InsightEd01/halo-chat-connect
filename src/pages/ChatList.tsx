@@ -6,63 +6,33 @@ import ChatListItem from '@/components/ChatListItem';
 import NavBar from '@/components/NavBar';
 import EmptyState from '@/components/EmptyState';
 import { Input } from '@/components/ui/input';
-
-// Sample data for demonstration
-const sampleChats = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    avatar: 'https://randomuser.me/api/portraits/women/12.jpg',
-    lastMessage: "Let me know when you arrive",
-    timestamp: '10:45 AM',
-    unreadCount: 2,
-    status: 'online' as const
-  },
-  {
-    id: '2',
-    name: 'Mike Peterson',
-    avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-    lastMessage: 'The meeting has been rescheduled',
-    timestamp: '9:30 AM',
-    unreadCount: 0,
-    status: 'away' as const
-  },
-  {
-    id: '3',
-    name: 'Jennifer Williams',
-    avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-    lastMessage: 'Thanks for your help yesterday!',
-    timestamp: 'Yesterday',
-    unreadCount: 0,
-    status: 'offline' as const
-  },
-  {
-    id: '4',
-    name: 'David Chen',
-    avatar: 'https://randomuser.me/api/portraits/men/46.jpg',
-    lastMessage: 'Did you see the new project requirements?',
-    timestamp: 'Yesterday',
-    unreadCount: 0,
-    status: null
-  },
-  {
-    id: '5',
-    name: 'Amy Wilson',
-    avatar: 'https://randomuser.me/api/portraits/women/67.jpg',
-    lastMessage: "Let's catch up this weekend!",
-    timestamp: 'Wednesday',
-    unreadCount: 0,
-    status: null
-  }
-];
+import { useUserChats } from '@/services/chatService';
+import { useAuth } from '@/contexts/AuthContext';
+import { formatDistanceToNow } from 'date-fns';
 
 const ChatList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useAuth();
+  const { data: chats = [], isLoading, isError } = useUserChats();
   
   // Filter chats based on search query
-  const filteredChats = sampleChats.filter(chat => 
-    chat.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredChats = chats.filter(chat => {
+    // Find the other participant (not current user)
+    const otherParticipant = chat.participants.find(p => p.id !== user?.id);
+    
+    if (!otherParticipant) return false;
+    
+    // Search by username
+    return otherParticipant.username.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  const formatTimestamp = (timestamp: string) => {
+    try {
+      return formatDistanceToNow(new Date(timestamp), { addSuffix: false });
+    } catch (e) {
+      return timestamp;
+    }
+  };
 
   return (
     <div className="wispa-container">
@@ -90,19 +60,34 @@ const ChatList: React.FC = () => {
       </div>
       
       <div className="flex-1 overflow-y-auto">
-        {filteredChats.length > 0 ? (
-          filteredChats.map(chat => (
-            <ChatListItem
-              key={chat.id}
-              id={chat.id}
-              name={chat.name}
-              avatar={chat.avatar}
-              lastMessage={chat.lastMessage}
-              timestamp={chat.timestamp}
-              unreadCount={chat.unreadCount}
-              status={chat.status}
-            />
-          ))
+        {isLoading ? (
+          <div className="flex items-center justify-center h-32">
+            <p>Loading conversations...</p>
+          </div>
+        ) : isError ? (
+          <div className="flex items-center justify-center h-32 text-red-500">
+            <p>Error loading conversations</p>
+          </div>
+        ) : filteredChats.length > 0 ? (
+          filteredChats.map(chat => {
+            // Find the other participant (not current user)
+            const otherParticipant = chat.participants.find(p => p.id !== user?.id);
+            
+            if (!otherParticipant) return null;
+            
+            return (
+              <ChatListItem
+                key={chat.id}
+                id={chat.id}
+                name={otherParticipant.username}
+                avatar={otherParticipant.avatar_url || undefined}
+                lastMessage={chat.lastMessage?.content}
+                timestamp={chat.lastMessage ? formatTimestamp(chat.lastMessage.created_at) : undefined}
+                unreadCount={chat.lastMessage && chat.lastMessage.user_id !== user?.id && chat.lastMessage.status !== 'read' ? 1 : 0}
+                status={null} // We're not tracking online status yet
+              />
+            );
+          })
         ) : (
           <EmptyState
             title="No conversations found"

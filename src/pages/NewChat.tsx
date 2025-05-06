@@ -6,67 +6,40 @@ import { Input } from '@/components/ui/input';
 import Avatar from '@/components/Avatar';
 import EmptyState from '@/components/EmptyState';
 import { toast } from '@/components/ui/use-toast';
-
-// Sample contact data
-const sampleContacts = [
-  {
-    id: '6',
-    name: 'Emily Cooper',
-    avatar: 'https://randomuser.me/api/portraits/women/28.jpg',
-    userId: '123456',
-    status: null
-  },
-  {
-    id: '7',
-    name: 'Robert Wilson',
-    avatar: 'https://randomuser.me/api/portraits/men/92.jpg',
-    userId: '654321',
-    status: 'online' as const
-  },
-  {
-    id: '8',
-    name: 'Sophia Garcia',
-    avatar: 'https://randomuser.me/api/portraits/women/19.jpg',
-    userId: '987654',
-    status: null
-  },
-  {
-    id: '9',
-    name: 'James Taylor',
-    avatar: 'https://randomuser.me/api/portraits/men/54.jpg',
-    userId: '456789',
-    status: 'away' as const
-  },
-];
+import { useSearchUsers, useCreateChat } from '@/services/chatService';
 
 const NewChat: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [idQuery, setIdQuery] = useState('');
-  const [addingById, setAddingById] = useState(false);
   const navigate = useNavigate();
+  
+  const { 
+    data: users = [], 
+    isLoading 
+  } = useSearchUsers(searchQuery);
+  
+  const { 
+    mutate: createChat, 
+    isPending: isCreatingChat 
+  } = useCreateChat();
 
-  // Filter contacts based on search query
-  const filteredContacts = sampleContacts.filter(contact => 
-    contact.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleAddById = () => {
-    // This would connect to Supabase to find a user by ID
-    toast({
-      title: "User ID Search",
-      description: `Supabase integration needed to search for ID: ${idQuery}`,
-    });
+  const handleSelectUser = (userId: string) => {
+    if (isCreatingChat) return;
     
-    // For demo purposes, we'll just create a fake contact
-    if (idQuery.length === 6) {
-      navigate(`/chat/new-${idQuery}`);
-    } else {
-      toast({
-        title: "Invalid User ID",
-        description: "User IDs must be 6 digits long",
-        variant: "destructive"
-      });
-    }
+    createChat(
+      { participantId: userId },
+      {
+        onSuccess: (chatId) => {
+          navigate(`/chat/${chatId}`);
+        },
+        onError: (error) => {
+          toast({
+            title: "Error creating chat",
+            description: error.message,
+            variant: "destructive"
+          });
+        }
+      }
+    );
   };
 
   return (
@@ -86,63 +59,43 @@ const NewChat: React.FC = () => {
             <Search className="h-4 w-4 text-gray-400" />
           </div>
           <Input
-            placeholder={addingById ? "Enter 6-digit User ID" : "Search contacts..."}
-            value={addingById ? idQuery : searchQuery}
-            onChange={e => addingById ? setIdQuery(e.target.value) : setSearchQuery(e.target.value)}
+            placeholder="Search users by username..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
             className="w-full pl-10"
           />
         </div>
-        
-        {addingById ? (
-          <div className="flex mt-2 space-x-2">
-            <button 
-              className="flex-1 text-sm bg-gray-100 py-1.5 rounded"
-              onClick={() => setAddingById(false)}
-            >
-              Cancel
-            </button>
-            <button 
-              className="flex-1 text-sm bg-wispa-500 text-white py-1.5 rounded"
-              onClick={handleAddById}
-              disabled={idQuery.length !== 6}
-            >
-              Find User
-            </button>
-          </div>
-        ) : (
-          <button 
-            className="mt-2 text-wispa-500 text-sm font-medium"
-            onClick={() => setAddingById(true)}
-          >
-            Add a new chat using a User ID
-          </button>
-        )}
       </div>
       
       <div className="flex-1 overflow-y-auto">
-        {!addingById && (
-          <>
-            {filteredContacts.length > 0 ? (
-              filteredContacts.map(contact => (
-                <Link
-                  key={contact.id}
-                  to={`/chat/${contact.id}`}
-                  className="px-4 py-3 border-b flex items-center hover:bg-gray-50"
-                >
-                  <Avatar src={contact.avatar} alt={contact.name} status={contact.status} />
-                  <div className="ml-3">
-                    <h3 className="font-medium">{contact.name}</h3>
-                    <p className="text-sm text-gray-500">ID: {contact.userId}</p>
-                  </div>
-                </Link>
-              ))
-            ) : (
-              <EmptyState
-                title="No contacts found"
-                description={searchQuery ? "Try a different search term" : "Add contacts by searching their User ID"}
-              />
-            )}
-          </>
+        {isLoading ? (
+          <div className="flex items-center justify-center h-32">
+            <p>Searching users...</p>
+          </div>
+        ) : users.length > 0 ? (
+          users.map(user => (
+            <button
+              key={user.id}
+              onClick={() => handleSelectUser(user.id)}
+              disabled={isCreatingChat}
+              className="w-full px-4 py-3 border-b flex items-center hover:bg-gray-50 disabled:opacity-50"
+            >
+              <Avatar src={user.avatar_url || undefined} alt={user.username} status={null} />
+              <div className="ml-3 text-left">
+                <h3 className="font-medium">{user.username}</h3>
+              </div>
+            </button>
+          ))
+        ) : searchQuery ? (
+          <EmptyState
+            title="No users found"
+            description="Try searching with a different username"
+          />
+        ) : (
+          <EmptyState
+            title="Search for users"
+            description="Enter a username to find people to chat with"
+          />
         )}
       </div>
     </div>

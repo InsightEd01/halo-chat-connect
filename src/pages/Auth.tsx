@@ -1,35 +1,44 @@
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Auth: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  const { user, signIn, signUp } = useAuth();
+
+  // Redirect if already logged in
+  if (user) {
+    return <Navigate to="/chats" replace />;
+  }
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // This is just a placeholder - with Supabase integration we would handle real auth
-    setTimeout(() => {
-      toast({
-        title: isSignUp ? "Account created" : "Welcome back!",
-        description: "You need to connect Supabase to enable real authentication.",
-      });
+    try {
+      if (isSignUp) {
+        await signUp(email, password, username);
+      } else {
+        await signIn(email, password);
+      }
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   const handleGoogleAuth = () => {
     toast({
       title: "Google Authentication",
-      description: "You need to connect Supabase to enable Google auth.",
+      description: "Google authentication is not implemented yet.",
     });
   };
 
@@ -54,13 +63,13 @@ const Auth: React.FC = () => {
             <form onSubmit={handleAuth} className="space-y-4">
               {isSignUp && (
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">Username</label>
                   <Input 
-                    id="name"
+                    id="username"
                     type="text" 
-                    placeholder="Enter your name"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
+                    placeholder="Enter your username"
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
                     className="w-full"
                     required
                   />
