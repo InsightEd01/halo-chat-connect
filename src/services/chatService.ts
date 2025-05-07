@@ -311,9 +311,12 @@ export function useSearchUsers(query: string) {
   return useQuery({
     queryKey: ['users', query],
     queryFn: async () => {
-      if (!user || !query) return [];
+      if (!user) throw new Error('No authenticated user');
+      if (!query || query.trim() === '') return [];
       
-      // Check if the query is a valid UUID (for searching by ID)
+      console.log('Searching for users with query:', query);
+      
+      // For UUID format checking
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query);
       
       let userQuery = supabase
@@ -322,19 +325,28 @@ export function useSearchUsers(query: string) {
         .neq('id', user.id); // Don't include current user
       
       if (isUuid) {
-        // If the query appears to be a UUID, search by ID
+        console.log('Searching by ID:', query);
+        // If query is a valid UUID, search by exact ID
         userQuery = userQuery.eq('id', query);
       } else {
-        // Otherwise search by username
+        console.log('Searching by username:', query);
+        // Otherwise search by username (case insensitive)
         userQuery = userQuery.ilike('username', `%${query}%`);
       }
       
+      // Execute the query
       const { data, error } = await userQuery.limit(20);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error searching users:', error);
+        throw error;
+      }
       
-      return data;
+      console.log('Search results:', data);
+      return data || [];
     },
-    enabled: !!user && query.length > 0,
+    enabled: !!user && !!query && query.trim() !== '',
+    staleTime: 1000 * 60, // 1 minute
+    refetchOnWindowFocus: false,
   });
 }

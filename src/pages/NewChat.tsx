@@ -1,22 +1,35 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Search, AlertCircle, UserPlus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import Avatar from '@/components/Avatar';
 import EmptyState from '@/components/EmptyState';
 import { toast } from '@/components/ui/use-toast';
 import { useSearchUsers, useCreateChat } from '@/services/chatService';
+import { useAuth } from '@/contexts/AuthContext';
 
 const NewChat: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  // Debounce search input to avoid excessive API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   
   const { 
     data: users = [], 
     isLoading,
-    error
-  } = useSearchUsers(searchQuery);
+    error,
+    refetch
+  } = useSearchUsers(debouncedQuery);
   
   const { 
     mutate: createChat, 
@@ -42,6 +55,13 @@ const NewChat: React.FC = () => {
       }
     );
   };
+
+  // For debugging purposes
+  useEffect(() => {
+    if (error) {
+      console.error("Search error:", error);
+    }
+  }, [error]);
 
   return (
     <div className="wispa-container">
@@ -77,6 +97,12 @@ const NewChat: React.FC = () => {
           <div className="flex flex-col items-center justify-center h-32 text-red-500">
             <AlertCircle className="h-8 w-8 mb-2" />
             <p>Error finding users. Please try again.</p>
+            <button 
+              onClick={() => refetch()} 
+              className="mt-2 px-4 py-2 bg-wispa-500 text-white rounded"
+            >
+              Retry
+            </button>
           </div>
         ) : users.length > 0 ? (
           users.map(user => (
@@ -93,10 +119,11 @@ const NewChat: React.FC = () => {
               </div>
             </button>
           ))
-        ) : searchQuery ? (
+        ) : debouncedQuery ? (
           <EmptyState
             title="No users found"
             description="Try searching with a different username or ID"
+            icon={<UserPlus className="h-12 w-12 mb-4 text-wispa-500" />}
           />
         ) : (
           <EmptyState
