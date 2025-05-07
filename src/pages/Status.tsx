@@ -8,7 +8,20 @@ import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format, formatDistanceToNow } from 'date-fns';
-import { StatusUpdate, useStatusUpdates, useCreateStatus, useDeleteStatus, useViewStatus } from '@/services/statusService';
+
+interface StatusUpdate {
+  id: string;
+  user_id: string;
+  content: string | null;
+  media_url: string | null;
+  created_at: string;
+  expires_at: string;
+  viewed_by: string[];
+  user?: {
+    username: string;
+    avatar_url: string | null;
+  };
+}
 
 const Status: React.FC = () => {
   const { user } = useAuth();
@@ -19,41 +32,42 @@ const Status: React.FC = () => {
   const [statusContent, setStatusContent] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [showStatusForm, setShowStatusForm] = useState(false);
-  
-  // Use React Query hooks
-  const { data: fetchedStatuses, isLoading: isLoadingStatuses } = useStatusUpdates();
-  const createStatusMutation = useCreateStatus();
-  const deleteStatusMutation = useDeleteStatus();
-  const viewStatusMutation = useViewStatus();
 
-  // Process fetched statuses
+  // Fetch all status updates
   useEffect(() => {
-    if (!fetchedStatuses) return;
-    
-    try {
-      // Cast the fetchedStatuses to StatusUpdate[]
-      const typedStatuses = fetchedStatuses as unknown as StatusUpdate[];
+    const fetchStatuses = async () => {
+      if (!user) return;
       
-      if (user) {
-        const myStatusData = typedStatuses.find(status => status.user_id === user.id) || null;
-        const otherStatusesData = typedStatuses.filter(status => status.user_id !== user.id);
+      try {
+        const { data, error } = await supabase
+          .from('status_updates')
+          .select('*, user:profiles!status_updates_user_id_fkey(username, avatar_url)')
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
         
-        setMyStatus(myStatusData);
-        setOtherStatuses(otherStatusesData);
-        setStatusUpdates(typedStatuses);
+        if (data) {
+          const myStatusData = data.find(status => status.user_id === user.id) || null;
+          const otherStatusesData = data.filter(status => status.user_id !== user.id);
+          
+          setMyStatus(myStatusData);
+          setOtherStatuses(otherStatusesData);
+          setStatusUpdates(data);
+        }
+      } catch (error: any) {
+        console.error('Error fetching statuses:', error.message);
+        toast({
+          title: 'Error',
+          description: 'Failed to load status updates',
+          variant: 'destructive',
+        });
       }
-    } catch (error: any) {
-      console.error('Error processing statuses:', error.message);
-      toast({
-        title: 'Error',
-        description: 'Failed to process status updates',
-        variant: 'destructive',
-      });
-    }
-  }, [fetchedStatuses, user]);
-
-  // Set up real-time subscription to status_updates table
-  useEffect(() => {
+    };
+    
+    fetchStatuses();
+    
+    // Set up real-time subscription to status_updates table
     const statusChannel = supabase
       .channel('status_changes')
       .on('postgres_changes', 
@@ -64,7 +78,7 @@ const Status: React.FC = () => {
         }, 
         (payload) => {
           console.log('Status update change received:', payload);
-          // React Query will automatically refetch when mutations happen
+          fetchStatuses();
         }
       )
       .subscribe();
@@ -72,7 +86,7 @@ const Status: React.FC = () => {
     return () => {
       supabase.removeChannel(statusChannel);
     };
-  }, []);
+  }, [user]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -117,10 +131,36 @@ const Status: React.FC = () => {
     setIsUploading(true);
     
     try {
-      await createStatusMutation.mutateAsync({
-        content: statusContent,
-        mediaFile: imageFile || undefined,
-      });
+      let mediaUrl = null;
+      
+      // Upload image if selected
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const filePath = `${user.id}/${uuidv4()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('status')
+          .upload(filePath, imageFile);
+          
+        if (uploadError) throw uploadError;
+        
+        const { data } = supabase.storage
+          .from('status')
+          .getPublicUrl(filePath);
+          
+        mediaUrl = data.publicUrl;
+      }
+      
+      // Insert status update
+      const { error: insertError } = await supabase
+        .from('status_updates')
+        .insert({
+          user_id: user.id,
+          content: statusContent || null,
+          media_url: mediaUrl,
+        });
+        
+      if (insertError) throw insertError;
       
       toast({
         title: 'Status updated',
@@ -144,13 +184,21 @@ const Status: React.FC = () => {
 
   const deleteStatus = async (statusId: string) => {
     try {
-      // Get the status to delete
+      // If status has media, delete it from storage
       const statusToDelete = statusUpdates.find(s => s.id === statusId);
       
-      await deleteStatusMutation.mutateAsync({
-        statusId,
-        mediaUrl: statusToDelete?.media_url || undefined,
-      });
+      if (statusToDelete?.media_url) {
+        const mediaPath = statusToDelete.media_url.split('/').slice(-2).join('/');
+        await supabase.storage.from('status').remove([mediaPath]);
+      }
+      
+      // Delete status from database
+      const { error } = await supabase
+        .from('status_updates')
+        .delete()
+        .eq('id', statusId);
+        
+      if (error) throw error;
       
       toast({
         title: 'Status deleted',
@@ -170,7 +218,20 @@ const Status: React.FC = () => {
     if (!user) return;
     
     try {
-      await viewStatusMutation.mutateAsync({ statusId });
+      // Record view
+      const { error } = await supabase
+        .from('status_views')
+        .insert({
+          status_id: statusId,
+          viewer_id: user.id
+        })
+        .select()
+        .single();
+      
+      // We're ok with error if it's a uniqueness violation (already viewed)
+      if (error && !error.message.includes('unique constraint')) {
+        throw error;
+      }
     } catch (error: any) {
       console.error('Error recording status view:', error.message);
     }
@@ -193,29 +254,6 @@ const Status: React.FC = () => {
     } catch (e) {
       return 'Unknown time';
     }
-  };
-
-  // Check if a status has been viewed by the current user
-  const isStatusViewed = (status: StatusUpdate): boolean => {
-    if (!user) return false;
-    
-    // First check the viewed_by array if available
-    if (status.viewed_by) {
-      // Handle both array and JSON object cases
-      if (Array.isArray(status.viewed_by)) {
-        return status.viewed_by.includes(user.id);
-      } else if (typeof status.viewed_by === 'object') {
-        // Handle as JSON array if possible
-        try {
-          const viewedByArray = Object.values(status.viewed_by);
-          return viewedByArray.includes(user.id);
-        } catch (e) {
-          return false;
-        }
-      }
-    }
-    
-    return false;
   };
 
   return (
@@ -322,11 +360,7 @@ const Status: React.FC = () => {
         </div>
         
         {/* Recent updates */}
-        {isLoadingStatuses ? (
-          <div className="flex justify-center items-center p-4">
-            <p>Loading status updates...</p>
-          </div>
-        ) : otherStatuses.length > 0 ? (
+        {otherStatuses.length > 0 ? (
           <div>
             <h3 className="text-gray-500 text-sm px-4 py-3">Recent Updates</h3>
             {otherStatuses.map(status => (
@@ -338,7 +372,7 @@ const Status: React.FC = () => {
                 <Avatar 
                   src={status.user?.avatar_url || undefined} 
                   alt={status.user?.username || 'User'} 
-                  className={`border-2 ${isStatusViewed(status) ? 'border-gray-300' : 'border-wispa-500'}`}
+                  className={`border-2 ${status.viewed_by?.includes(user?.id || '') ? 'border-gray-300' : 'border-wispa-500'}`}
                 />
                 <div className="ml-3">
                   <h3 className="font-medium">{status.user?.username || 'User'}</h3>

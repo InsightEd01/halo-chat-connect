@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { v4 as uuidv4 } from 'uuid';
-import { Json } from "@/integrations/supabase/types";
 
 export interface StatusUpdate {
   id: string;
@@ -12,7 +11,7 @@ export interface StatusUpdate {
   media_url: string | null;
   created_at: string;
   expires_at: string;
-  viewed_by: Json | null; // Changed from string[] to Json | null to match Supabase type
+  viewed_by: string[];
   user?: {
     username: string;
     avatar_url: string | null;
