@@ -344,17 +344,18 @@ export function useSearchUsers(query: string) {
       if (results.length === 0 && isSixDigitId) {
         console.log('Searching by 6-digit ID:', query);
         
-        // Using RPC or a function to search by user_metadata would be ideal
-        // For now, we'll fetch all users that have a user_id in metadata matching the query
+        // Using the RPC function to search by user_id in metadata
         const { data: metadataResults, error: metadataError } = await supabase
           .rpc('search_users_by_user_id', { search_user_id: query });
           
         if (metadataError) {
           console.error('Error searching by user_id:', metadataError);
           // Fall back to username search if RPC fails
-        } else if (metadataResults && metadataResults.length > 0) {
-          // Filter out current user
-          results = metadataResults.filter(profile => profile.id !== user.id);
+        } else if (metadataResults) {
+          // Filter out current user and ensure we have an array
+          results = Array.isArray(metadataResults) 
+            ? metadataResults.filter(profile => profile.id !== user.id)
+            : [];
         }
       }
       

@@ -16,7 +16,10 @@ export function useStatusUpdates() {
       
       const { data, error } = await supabase
         .from('status_updates')
-        .select('*, user:profiles!status_updates_user_id_fkey(username, avatar_url)')
+        .select(`
+          *,
+          profiles!status_updates_user_id_fkey (username, avatar_url)
+        `)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
         
@@ -39,9 +42,9 @@ export function useStatusUpdates() {
           ...status,
           viewed_by: viewedBy,
           // Ensure user has the expected shape
-          user: status.user && {
-            username: status.user.username || 'Unknown User',
-            avatar_url: status.user.avatar_url
+          user: status.profiles && {
+            username: status.profiles.username || 'Unknown User',
+            avatar_url: status.profiles.avatar_url
           }
         } as StatusUpdate;
       }) || [];
@@ -95,7 +98,10 @@ export function useCreateStatus() {
           content: content || null,
           media_url: mediaUrl,
         })
-        .select('*, user:profiles!status_updates_user_id_fkey(username, avatar_url)')
+        .select(`
+          *,
+          profiles!status_updates_user_id_fkey (username, avatar_url)
+        `)
         .single();
         
       if (error) throw error;
@@ -115,9 +121,9 @@ export function useCreateStatus() {
         ...data,
         viewed_by: viewedBy,
         // Ensure user has the expected shape
-        user: data.user && {
-          username: data.user.username || 'Unknown User',
-          avatar_url: data.user.avatar_url
+        user: data.profiles && {
+          username: data.profiles.username || 'Unknown User',
+          avatar_url: data.profiles.avatar_url
         }
       };
       
