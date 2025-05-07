@@ -51,9 +51,25 @@ const Status: React.FC = () => {
           const myStatusData = data.find(status => status.user_id === user.id) || null;
           const otherStatusesData = data.filter(status => status.user_id !== user.id);
           
-          setMyStatus(myStatusData);
-          setOtherStatuses(otherStatusesData);
-          setStatusUpdates(data);
+          // Make sure viewed_by is always treated as string array
+          const processedData = data.map(status => ({
+            ...status,
+            viewed_by: Array.isArray(status.viewed_by) ? status.viewed_by : []
+          }));
+          
+          const processedMyStatus = myStatusData ? {
+            ...myStatusData,
+            viewed_by: Array.isArray(myStatusData.viewed_by) ? myStatusData.viewed_by : []
+          } : null;
+          
+          const processedOtherStatuses = otherStatusesData.map(status => ({
+            ...status,
+            viewed_by: Array.isArray(status.viewed_by) ? status.viewed_by : []
+          }));
+          
+          setMyStatus(processedMyStatus);
+          setOtherStatuses(processedOtherStatuses);
+          setStatusUpdates(processedData);
         }
       } catch (error: any) {
         console.error('Error fetching statuses:', error.message);
