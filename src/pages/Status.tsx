@@ -8,6 +8,8 @@ import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format, formatDistanceToNow } from 'date-fns';
+import { Json } from '@/integrations/supabase/types';
+import { StatusUpdate } from '@/services/statusService';
 
 interface StatusUpdate {
   id: string;
@@ -48,27 +50,30 @@ const Status: React.FC = () => {
         if (error) throw error;
         
         if (data) {
-          const myStatusData = data.find(status => status.user_id === user.id) || null;
-          const otherStatusesData = data.filter(status => status.user_id !== user.id);
+          // Process data to ensure viewed_by is always a string array
+          const processedData = data.map(status => {
+            let viewedBy: string[] = [];
+            
+            // Handle different possible types of viewed_by
+            if (status.viewed_by === null) {
+              viewedBy = [];
+            } else if (Array.isArray(status.viewed_by)) {
+              viewedBy = status.viewed_by.map(id => String(id));
+            } else if (typeof status.viewed_by === 'object') {
+              viewedBy = Object.values(status.viewed_by).map(id => String(id));
+            }
+            
+            return {
+              ...status,
+              viewed_by: viewedBy
+            } as StatusUpdate;
+          });
           
-          // Make sure viewed_by is always treated as string array
-          const processedData = data.map(status => ({
-            ...status,
-            viewed_by: Array.isArray(status.viewed_by) ? status.viewed_by : []
-          }));
+          const myStatusData = processedData.find(status => status.user_id === user.id) || null;
+          const otherStatusesData = processedData.filter(status => status.user_id !== user.id);
           
-          const processedMyStatus = myStatusData ? {
-            ...myStatusData,
-            viewed_by: Array.isArray(myStatusData.viewed_by) ? myStatusData.viewed_by : []
-          } : null;
-          
-          const processedOtherStatuses = otherStatusesData.map(status => ({
-            ...status,
-            viewed_by: Array.isArray(status.viewed_by) ? status.viewed_by : []
-          }));
-          
-          setMyStatus(processedMyStatus);
-          setOtherStatuses(processedOtherStatuses);
+          setMyStatus(myStatusData);
+          setOtherStatuses(otherStatusesData);
           setStatusUpdates(processedData);
         }
       } catch (error: any) {

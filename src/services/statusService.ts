@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { v4 as uuidv4 } from 'uuid';
+import { Json } from "@/integrations/supabase/types";
 
 export interface StatusUpdate {
   id: string;
@@ -35,7 +36,15 @@ export function useStatusUpdates() {
         
       if (error) throw error;
       
-      return data || [];
+      // Transform data to ensure viewed_by is always a string array
+      const processedData = data?.map(status => ({
+        ...status,
+        viewed_by: Array.isArray(status.viewed_by) 
+          ? status.viewed_by.map(id => String(id))
+          : []
+      })) || [];
+      
+      return processedData as StatusUpdate[];
     },
     enabled: !!user,
   });
@@ -89,7 +98,15 @@ export function useCreateStatus() {
         
       if (error) throw error;
       
-      return data;
+      // Ensure viewed_by is processed consistently
+      const processedData = {
+        ...data,
+        viewed_by: Array.isArray(data.viewed_by) 
+          ? data.viewed_by.map(id => String(id))
+          : []
+      } as StatusUpdate;
+      
+      return processedData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['status-updates'] });
