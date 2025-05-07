@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search } from 'lucide-react';
+import { ArrowLeft, Search, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import Avatar from '@/components/Avatar';
 import EmptyState from '@/components/EmptyState';
@@ -14,7 +14,8 @@ const NewChat: React.FC = () => {
   
   const { 
     data: users = [], 
-    isLoading 
+    isLoading,
+    error
   } = useSearchUsers(searchQuery);
   
   const { 
@@ -59,7 +60,7 @@ const NewChat: React.FC = () => {
             <Search className="h-4 w-4 text-gray-400" />
           </div>
           <Input
-            placeholder="Search users by username..."
+            placeholder="Search users by username or ID..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="w-full pl-10"
@@ -72,6 +73,11 @@ const NewChat: React.FC = () => {
           <div className="flex items-center justify-center h-32">
             <p>Searching users...</p>
           </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center h-32 text-red-500">
+            <AlertCircle className="h-8 w-8 mb-2" />
+            <p>Error finding users. Please try again.</p>
+          </div>
         ) : users.length > 0 ? (
           users.map(user => (
             <button
@@ -83,18 +89,19 @@ const NewChat: React.FC = () => {
               <Avatar src={user.avatar_url || undefined} alt={user.username} status={null} />
               <div className="ml-3 text-left">
                 <h3 className="font-medium">{user.username}</h3>
+                <p className="text-xs text-gray-500">ID: {user.id}</p>
               </div>
             </button>
           ))
         ) : searchQuery ? (
           <EmptyState
             title="No users found"
-            description="Try searching with a different username"
+            description="Try searching with a different username or ID"
           />
         ) : (
           <EmptyState
             title="Search for users"
-            description="Enter a username to find people to chat with"
+            description="Enter a username or user ID to find people to chat with"
           />
         )}
       </div>

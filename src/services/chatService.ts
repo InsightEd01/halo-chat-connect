@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -305,7 +304,7 @@ export function useCreateChat() {
   });
 }
 
-// Search for users
+// Search for users by username or user ID
 export function useSearchUsers(query: string) {
   const { user } = useAuth();
   
@@ -314,13 +313,24 @@ export function useSearchUsers(query: string) {
     queryFn: async () => {
       if (!user || !query) return [];
       
-      const { data, error } = await supabase
+      // Check if the query is a valid UUID (for searching by ID)
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query);
+      
+      let userQuery = supabase
         .from('profiles')
         .select('*')
-        .neq('id', user.id) // Don't include current user
-        .ilike('username', `%${query}%`)
-        .limit(20);
-        
+        .neq('id', user.id); // Don't include current user
+      
+      if (isUuid) {
+        // If the query appears to be a UUID, search by ID
+        userQuery = userQuery.eq('id', query);
+      } else {
+        // Otherwise search by username
+        userQuery = userQuery.ilike('username', `%${query}%`);
+      }
+      
+      const { data, error } = await userQuery.limit(20);
+      
       if (error) throw error;
       
       return data;
