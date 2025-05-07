@@ -3,21 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { v4 as uuidv4 } from 'uuid';
-import { Json } from "@/integrations/supabase/types";
-
-export interface StatusUpdate {
-  id: string;
-  user_id: string;
-  content: string | null;
-  media_url: string | null;
-  created_at: string;
-  expires_at: string;
-  viewed_by: string[];
-  user?: {
-    username: string;
-    avatar_url: string | null;
-  };
-}
+import { StatusUpdate } from "@/types/status";
 
 // Fetch all status updates
 export function useStatusUpdates() {
@@ -37,14 +23,30 @@ export function useStatusUpdates() {
       if (error) throw error;
       
       // Transform data to ensure viewed_by is always a string array
-      const processedData = data?.map(status => ({
-        ...status,
-        viewed_by: Array.isArray(status.viewed_by) 
-          ? status.viewed_by.map(id => String(id))
-          : []
-      })) || [];
+      const processedData = data?.map(status => {
+        // Process viewed_by to ensure it's always a string array
+        let viewedBy: string[] = [];
+        
+        if (status.viewed_by === null) {
+          viewedBy = [];
+        } else if (Array.isArray(status.viewed_by)) {
+          viewedBy = status.viewed_by.map(id => String(id));
+        } else if (typeof status.viewed_by === 'object') {
+          viewedBy = Object.values(status.viewed_by as Record<string, string>).map(id => String(id));
+        }
+        
+        return {
+          ...status,
+          viewed_by: viewedBy,
+          // Ensure user has the expected shape
+          user: status.user && {
+            username: status.user.username || 'Unknown User',
+            avatar_url: status.user.avatar_url
+          }
+        } as StatusUpdate;
+      }) || [];
       
-      return processedData as StatusUpdate[];
+      return processedData;
     },
     enabled: !!user,
   });
@@ -93,18 +95,31 @@ export function useCreateStatus() {
           content: content || null,
           media_url: mediaUrl,
         })
-        .select()
+        .select('*, user:profiles!status_updates_user_id_fkey(username, avatar_url)')
         .single();
         
       if (error) throw error;
       
-      // Ensure viewed_by is processed consistently
-      const processedData = {
+      // Process viewed_by to ensure it's always a string array
+      let viewedBy: string[] = [];
+      
+      if (data.viewed_by === null) {
+        viewedBy = [];
+      } else if (Array.isArray(data.viewed_by)) {
+        viewedBy = data.viewed_by.map(id => String(id));
+      } else if (typeof data.viewed_by === 'object') {
+        viewedBy = Object.values(data.viewed_by as Record<string, string>).map(id => String(id));
+      }
+      
+      const processedData: StatusUpdate = {
         ...data,
-        viewed_by: Array.isArray(data.viewed_by) 
-          ? data.viewed_by.map(id => String(id))
-          : []
-      } as StatusUpdate;
+        viewed_by: viewedBy,
+        // Ensure user has the expected shape
+        user: data.user && {
+          username: data.user.username || 'Unknown User',
+          avatar_url: data.user.avatar_url
+        }
+      };
       
       return processedData;
     },

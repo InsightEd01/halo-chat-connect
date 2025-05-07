@@ -8,26 +8,16 @@ import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Json } from '@/integrations/supabase/types';
-import { StatusUpdate } from '@/services/statusService';
-
-interface StatusUpdate {
-  id: string;
-  user_id: string;
-  content: string | null;
-  media_url: string | null;
-  created_at: string;
-  expires_at: string;
-  viewed_by: string[];
-  user?: {
-    username: string;
-    avatar_url: string | null;
-  };
-}
+import { StatusUpdate } from '@/types/status';
+import {
+  useStatusUpdates,
+  useCreateStatus,
+  useDeleteStatus,
+  useViewStatus
+} from '@/services/statusService';
 
 const Status: React.FC = () => {
   const { user } = useAuth();
-  const [statusUpdates, setStatusUpdates] = useState<StatusUpdate[]>([]);
   const [myStatus, setMyStatus] = useState<StatusUpdate | null>(null);
   const [otherStatuses, setOtherStatuses] = useState<StatusUpdate[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -35,79 +25,25 @@ const Status: React.FC = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [showStatusForm, setShowStatusForm] = useState(false);
 
-  // Fetch all status updates
+  // Fetch all status updates using our custom hook
+  const { data: statusUpdates = [], isLoading, error } = useStatusUpdates();
+  const { mutate: createStatus } = useCreateStatus();
+  const { mutate: deleteStatus } = useDeleteStatus();
+  const { mutate: viewStatus } = useViewStatus();
+  
+  // Process status updates into my status and other statuses
   useEffect(() => {
-    const fetchStatuses = async () => {
-      if (!user) return;
+    if (statusUpdates.length > 0 && user) {
+      const myStatusData = statusUpdates.find(status => status.user_id === user.id) || null;
+      const otherStatusesData = statusUpdates.filter(status => status.user_id !== user.id);
       
-      try {
-        const { data, error } = await supabase
-          .from('status_updates')
-          .select('*, user:profiles!status_updates_user_id_fkey(username, avatar_url)')
-          .gt('expires_at', new Date().toISOString())
-          .order('created_at', { ascending: false });
-          
-        if (error) throw error;
-        
-        if (data) {
-          // Process data to ensure viewed_by is always a string array
-          const processedData = data.map(status => {
-            let viewedBy: string[] = [];
-            
-            // Handle different possible types of viewed_by
-            if (status.viewed_by === null) {
-              viewedBy = [];
-            } else if (Array.isArray(status.viewed_by)) {
-              viewedBy = status.viewed_by.map(id => String(id));
-            } else if (typeof status.viewed_by === 'object') {
-              viewedBy = Object.values(status.viewed_by).map(id => String(id));
-            }
-            
-            return {
-              ...status,
-              viewed_by: viewedBy
-            } as StatusUpdate;
-          });
-          
-          const myStatusData = processedData.find(status => status.user_id === user.id) || null;
-          const otherStatusesData = processedData.filter(status => status.user_id !== user.id);
-          
-          setMyStatus(myStatusData);
-          setOtherStatuses(otherStatusesData);
-          setStatusUpdates(processedData);
-        }
-      } catch (error: any) {
-        console.error('Error fetching statuses:', error.message);
-        toast({
-          title: 'Error',
-          description: 'Failed to load status updates',
-          variant: 'destructive',
-        });
-      }
-    };
-    
-    fetchStatuses();
-    
-    // Set up real-time subscription to status_updates table
-    const statusChannel = supabase
-      .channel('status_changes')
-      .on('postgres_changes', 
-        {
-          event: '*',
-          schema: 'public',
-          table: 'status_updates'
-        }, 
-        (payload) => {
-          console.log('Status update change received:', payload);
-          fetchStatuses();
-        }
-      )
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(statusChannel);
-    };
-  }, [user]);
+      setMyStatus(myStatusData);
+      setOtherStatuses(otherStatusesData);
+    } else {
+      setMyStatus(null);
+      setOtherStatuses([]);
+    }
+  }, [statusUpdates, user]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -137,7 +73,7 @@ const Status: React.FC = () => {
     setImageFile(file);
   };
 
-  const createStatus = async () => {
+  const handleCreateStatus = async () => {
     if (!user) return;
     
     if (!statusContent && !imageFile) {
@@ -152,36 +88,10 @@ const Status: React.FC = () => {
     setIsUploading(true);
     
     try {
-      let mediaUrl = null;
-      
-      // Upload image if selected
-      if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const filePath = `${user.id}/${uuidv4()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('status')
-          .upload(filePath, imageFile);
-          
-        if (uploadError) throw uploadError;
-        
-        const { data } = supabase.storage
-          .from('status')
-          .getPublicUrl(filePath);
-          
-        mediaUrl = data.publicUrl;
-      }
-      
-      // Insert status update
-      const { error: insertError } = await supabase
-        .from('status_updates')
-        .insert({
-          user_id: user.id,
-          content: statusContent || null,
-          media_url: mediaUrl,
-        });
-        
-      if (insertError) throw insertError;
+      await createStatus({
+        content: statusContent,
+        mediaFile: imageFile || undefined
+      });
       
       toast({
         title: 'Status updated',
@@ -203,23 +113,14 @@ const Status: React.FC = () => {
     }
   };
 
-  const deleteStatus = async (statusId: string) => {
+  const handleDeleteStatus = async (statusId: string) => {
     try {
-      // If status has media, delete it from storage
       const statusToDelete = statusUpdates.find(s => s.id === statusId);
       
-      if (statusToDelete?.media_url) {
-        const mediaPath = statusToDelete.media_url.split('/').slice(-2).join('/');
-        await supabase.storage.from('status').remove([mediaPath]);
-      }
-      
-      // Delete status from database
-      const { error } = await supabase
-        .from('status_updates')
-        .delete()
-        .eq('id', statusId);
-        
-      if (error) throw error;
+      await deleteStatus({
+        statusId,
+        mediaUrl: statusToDelete?.media_url || null
+      });
       
       toast({
         title: 'Status deleted',
@@ -235,24 +136,11 @@ const Status: React.FC = () => {
     }
   };
 
-  const viewStatus = async (statusId: string) => {
+  const handleViewStatus = async (statusId: string) => {
     if (!user) return;
     
     try {
-      // Record view
-      const { error } = await supabase
-        .from('status_views')
-        .insert({
-          status_id: statusId,
-          viewer_id: user.id
-        })
-        .select()
-        .single();
-      
-      // We're ok with error if it's a uniqueness violation (already viewed)
-      if (error && !error.message.includes('unique constraint')) {
-        throw error;
-      }
+      await viewStatus({ statusId });
     } catch (error: any) {
       console.error('Error recording status view:', error.message);
     }
@@ -276,6 +164,23 @@ const Status: React.FC = () => {
       return 'Unknown time';
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="wispa-container flex items-center justify-center">
+        <p>Loading status updates...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="wispa-container flex flex-col items-center justify-center">
+        <p className="text-red-500">Error loading status updates</p>
+        <p className="text-sm text-gray-500">{String(error)}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="wispa-container">
@@ -314,7 +219,7 @@ const Status: React.FC = () => {
               
               {myStatus && (
                 <button 
-                  onClick={() => deleteStatus(myStatus.id)} 
+                  onClick={() => handleDeleteStatus(myStatus.id)} 
                   className="ml-auto text-red-500"
                 >
                   <Trash2 className="h-5 w-5" />
@@ -368,7 +273,7 @@ const Status: React.FC = () => {
                     Cancel
                   </button>
                   <button
-                    onClick={createStatus}
+                    onClick={handleCreateStatus}
                     className="px-3 py-1.5 bg-wispa-500 text-white rounded"
                     disabled={isUploading}
                   >
@@ -388,7 +293,7 @@ const Status: React.FC = () => {
               <div 
                 key={status.id}
                 className="px-4 py-3 border-b flex items-center hover:bg-gray-50"
-                onClick={() => viewStatus(status.id)}
+                onClick={() => handleViewStatus(status.id)}
               >
                 <Avatar 
                   src={status.user?.avatar_url || undefined} 

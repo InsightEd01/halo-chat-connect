@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -304,7 +305,7 @@ export function useCreateChat() {
   });
 }
 
-// Search for users by username or user ID
+// Search for users by username or user ID (including 6-digit user IDs in user_metadata)
 export function useSearchUsers(query: string) {
   const { user } = useAuth();
   
@@ -318,32 +319,63 @@ export function useSearchUsers(query: string) {
       
       // For UUID format checking
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query);
+      const isSixDigitId = /^\d{6}$/.test(query);
       
-      let userQuery = supabase
-        .from('profiles')
-        .select('*')
-        .neq('id', user.id); // Don't include current user
+      // Begin with an empty array to store search results
+      let results = [];
       
       if (isUuid) {
-        console.log('Searching by ID:', query);
-        // If query is a valid UUID, search by exact ID
-        userQuery = userQuery.eq('id', query);
-      } else {
+        console.log('Searching by UUID:', query);
+        // Search by exact UUID
+        const { data: uuidResults, error: uuidError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', query)
+          .neq('id', user.id); // Don't include current user
+          
+        if (uuidError) throw uuidError;
+        
+        if (uuidResults && uuidResults.length > 0) {
+          results = uuidResults;
+        }
+      }
+      
+      // If no results by UUID and it's a 6-digit ID, search in user_metadata
+      if (results.length === 0 && isSixDigitId) {
+        console.log('Searching by 6-digit ID:', query);
+        
+        // Using RPC or a function to search by user_metadata would be ideal
+        // For now, we'll fetch all users that have a user_id in metadata matching the query
+        const { data: metadataResults, error: metadataError } = await supabase
+          .rpc('search_users_by_user_id', { search_user_id: query });
+          
+        if (metadataError) {
+          console.error('Error searching by user_id:', metadataError);
+          // Fall back to username search if RPC fails
+        } else if (metadataResults && metadataResults.length > 0) {
+          // Filter out current user
+          results = metadataResults.filter(profile => profile.id !== user.id);
+        }
+      }
+      
+      // If still no results, search by username
+      if (results.length === 0) {
         console.log('Searching by username:', query);
-        // Otherwise search by username (case insensitive)
-        userQuery = userQuery.ilike('username', `%${query}%`);
+        const { data: usernameResults, error: usernameError } = await supabase
+          .from('profiles')
+          .select('*')
+          .ilike('username', `%${query}%`)
+          .neq('id', user.id); // Don't include current user
+          
+        if (usernameError) throw usernameError;
+        
+        if (usernameResults) {
+          results = usernameResults;
+        }
       }
       
-      // Execute the query
-      const { data, error } = await userQuery.limit(20);
-      
-      if (error) {
-        console.error('Error searching users:', error);
-        throw error;
-      }
-      
-      console.log('Search results:', data);
-      return data || [];
+      console.log('Search results:', results);
+      return results || [];
     },
     enabled: !!user && !!query && query.trim() !== '',
     staleTime: 1000 * 60, // 1 minute
