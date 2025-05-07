@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -346,16 +345,14 @@ export function useSearchUsers(query: string) {
         
         // Using the RPC function to search by user_id in metadata
         const { data: metadataResults, error: metadataError } = await supabase
-          .rpc('search_users_by_user_id', { search_user_id: query });
+          .rpc('is_chat_participant', { search_user_id: query });
           
         if (metadataError) {
           console.error('Error searching by user_id:', metadataError);
           // Fall back to username search if RPC fails
-        } else if (metadataResults) {
+        } else if (metadataResults && Array.isArray(metadataResults)) {
           // Filter out current user and ensure we have an array
-          results = Array.isArray(metadataResults) 
-            ? metadataResults.filter(profile => profile.id !== user.id)
-            : [];
+          results = metadataResults.filter(profile => profile.id !== user.id);
         }
       }
       

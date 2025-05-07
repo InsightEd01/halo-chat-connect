@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,8 +23,8 @@ export function useStatusUpdates() {
         .order('created_at', { ascending: false });
         
       if (error) throw error;
-      
-      // Transform data to ensure viewed_by is always a string array
+
+      // Transform data to ensure viewed_by is always a string array and handle profiles properly
       const processedData = data?.map(status => {
         // Process viewed_by to ensure it's always a string array
         let viewedBy: string[] = [];
@@ -37,14 +36,22 @@ export function useStatusUpdates() {
         } else if (typeof status.viewed_by === 'object') {
           viewedBy = Object.values(status.viewed_by as Record<string, string>).map(id => String(id));
         }
+
+        // Default user object if profiles relation is missing or invalid
+        const defaultUser = {
+          username: 'Unknown User',
+          avatar_url: null
+        };
+        
+        // Safely access profiles data
+        const userProfile = status.profiles || defaultUser;
         
         return {
           ...status,
           viewed_by: viewedBy,
-          // Ensure user has the expected shape
-          user: status.profiles && {
-            username: status.profiles.username || 'Unknown User',
-            avatar_url: status.profiles.avatar_url
+          user: {
+            username: userProfile.username || defaultUser.username,
+            avatar_url: userProfile.avatar_url
           }
         } as StatusUpdate;
       }) || [];
@@ -120,10 +127,9 @@ export function useCreateStatus() {
       const processedData: StatusUpdate = {
         ...data,
         viewed_by: viewedBy,
-        // Ensure user has the expected shape
-        user: data.profiles && {
-          username: data.profiles.username || 'Unknown User',
-          avatar_url: data.profiles.avatar_url
+        user: {
+          username: data.profiles?.username || 'Unknown User',
+          avatar_url: data.profiles?.avatar_url || null
         }
       };
       
