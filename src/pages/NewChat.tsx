@@ -7,7 +7,9 @@ import Avatar from '@/components/Avatar';
 import EmptyState from '@/components/EmptyState';
 import { toast } from '@/components/ui/use-toast';
 import { useSearchUsers, useCreateChat } from '@/services/chatService';
+import { useSendFriendRequest, useFriendshipStatus } from '@/services/friendService';
 import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 
 const NewChat: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,6 +38,11 @@ const NewChat: React.FC = () => {
     isPending: isCreatingChat 
   } = useCreateChat();
 
+  const {
+    mutate: sendFriendRequest,
+    isPending: isSendingRequest
+  } = useSendFriendRequest();
+
   const handleSelectUser = (userId: string) => {
     if (isCreatingChat) return;
     
@@ -48,6 +55,29 @@ const NewChat: React.FC = () => {
         onError: (error) => {
           toast({
             title: "Error creating chat",
+            description: error.message,
+            variant: "destructive"
+          });
+        }
+      }
+    );
+  };
+
+  const handleSendFriendRequest = (userId: string) => {
+    if (isSendingRequest) return;
+
+    sendFriendRequest(
+      { recipientId: userId },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Friend request sent",
+            description: "They'll be notified of your request",
+          });
+        },
+        onError: (error) => {
+          toast({
+            title: "Error sending friend request",
             description: error.message,
             variant: "destructive"
           });
@@ -105,19 +135,32 @@ const NewChat: React.FC = () => {
             </button>
           </div>
         ) : users.length > 0 ? (
-          users.map(user => (
-            <button
-              key={user.id}
-              onClick={() => handleSelectUser(user.id)}
-              disabled={isCreatingChat}
-              className="w-full px-4 py-3 border-b flex items-center hover:bg-gray-50 disabled:opacity-50"
+          users.map(userResult => (
+            <div
+              key={userResult.id}
+              className="w-full px-4 py-3 border-b flex items-center justify-between hover:bg-gray-50"
             >
-              <Avatar src={user.avatar_url || undefined} alt={user.username} status={null} />
-              <div className="ml-3 text-left">
-                <h3 className="font-medium">{user.username}</h3>
-                <p className="text-xs text-gray-500">ID: {user.id}</p>
+              <div className="flex items-center">
+                <Avatar src={userResult.avatar_url || undefined} alt={userResult.username || ''} status={null} />
+                <div className="ml-3 text-left">
+                  <h3 className="font-medium">{userResult.username}</h3>
+                  <p className="text-xs text-gray-500">ID: {userResult.user_id}</p>
+                </div>
               </div>
-            </button>
+              
+              <div className="flex space-x-2">
+                <Button
+                  onClick={() => handleSelectUser(userResult.id)}
+                  disabled={isCreatingChat}
+                  className="bg-wispa-500 hover:bg-wispa-600"
+                  size="sm"
+                >
+                  Chat
+                </Button>
+                
+                <FriendRequestButton userId={userResult.id} onSendRequest={handleSendFriendRequest} />
+              </div>
+            </div>
           ))
         ) : debouncedQuery ? (
           <EmptyState
@@ -133,6 +176,48 @@ const NewChat: React.FC = () => {
         )}
       </div>
     </div>
+  );
+};
+
+// Helper component to show the appropriate friend request button
+const FriendRequestButton: React.FC<{ userId: string, onSendRequest: (userId: string) => void }> = ({ userId, onSendRequest }) => {
+  const { data: status, isLoading } = useFriendshipStatus(userId);
+  
+  if (isLoading) {
+    return (
+      <Button size="sm" variant="outline" disabled>
+        Loading...
+      </Button>
+    );
+  }
+  
+  if (status?.isFriend) {
+    return (
+      <Button size="sm" variant="outline" disabled>
+        Friend
+      </Button>
+    );
+  }
+  
+  if (status?.hasPendingRequest) {
+    return (
+      <Button size="sm" variant="outline" disabled>
+        {status.pendingRequestDirection === 'outgoing' ? 'Request Sent' : 'Request Received'}
+      </Button>
+    );
+  }
+  
+  return (
+    <Button 
+      size="sm"
+      variant="outline"
+      onClick={(e) => {
+        e.stopPropagation();
+        onSendRequest(userId);
+      }}
+    >
+      <UserPlus className="h-4 w-4 mr-1" /> Add Friend
+    </Button>
   );
 };
 

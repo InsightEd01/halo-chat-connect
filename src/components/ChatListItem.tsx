@@ -8,6 +8,7 @@ interface ChatListItemProps {
   id: string;
   name: string;
   avatar?: string;
+  userId?: string;
   lastMessage?: string;
   timestamp?: string;
   unreadCount?: number;
@@ -18,6 +19,7 @@ const ChatListItem: React.FC<ChatListItemProps> = ({
   id,
   name,
   avatar,
+  userId,
   lastMessage,
   timestamp,
   unreadCount = 0,
@@ -39,9 +41,17 @@ const ChatListItem: React.FC<ChatListItemProps> = ({
         </div>
         
         <div className="flex justify-between items-center mt-1">
-          <p className="text-sm text-gray-600 truncate">
-            {lastMessage || 'Start a conversation'}
-          </p>
+          <div className="flex flex-1 items-center">
+            <p className="text-sm text-gray-600 truncate">
+              {lastMessage || 'Start a conversation'}
+            </p>
+            
+            {userId && (
+              <span className="ml-2 text-xs text-gray-400">
+                ID: {userId}
+              </span>
+            )}
+          </div>
           
           {unreadCount > 0 && (
             <span 

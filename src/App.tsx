@@ -13,6 +13,7 @@ import ChatDetail from "./pages/ChatDetail";
 import Calls from "./pages/Calls";
 import Status from "./pages/Status";
 import NewChat from "./pages/NewChat";
+import Friends from "./pages/Friends";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/calls" element={<Calls />} />
               <Route path="/status" element={<Status />} />
               <Route path="/new-chat" element={<NewChat />} />
+              <Route path="/friends" element={<Friends />} />
               <Route path="/profile" element={<Profile />} />
             </Route>
             

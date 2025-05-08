@@ -1,12 +1,14 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, UserPlus, Bell } from 'lucide-react';
 import ChatListItem from '@/components/ChatListItem';
 import NavBar from '@/components/NavBar';
 import EmptyState from '@/components/EmptyState';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { useUserChats } from '@/services/chatService';
+import { useFriendRequests } from '@/services/friendService';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -14,6 +16,9 @@ const ChatList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const { user } = useAuth();
   const { data: chats = [], isLoading, isError } = useUserChats();
+  const { data: friendRequests } = useFriendRequests();
+  
+  const pendingRequests = friendRequests?.received?.filter(req => req.status === 'pending') || [];
   
   // Filter chats based on search query
   const filteredChats = chats.filter(chat => {
@@ -22,8 +27,11 @@ const ChatList: React.FC = () => {
     
     if (!otherParticipant) return false;
     
-    // Search by username
-    return otherParticipant.username.toLowerCase().includes(searchQuery.toLowerCase());
+    // Search by username or user ID
+    return (
+      otherParticipant.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      otherParticipant.user_id?.includes(searchQuery)
+    );
   });
 
   const formatTimestamp = (timestamp: string) => {
@@ -39,6 +47,14 @@ const ChatList: React.FC = () => {
       <header className="wispa-header">
         <h1 className="text-2xl font-bold">WispaChat</h1>
         <div className="flex space-x-2">
+          <Link to="/friends" className="relative p-2 rounded-full hover:bg-wispa-600">
+            <UserPlus className="h-5 w-5" />
+            {pendingRequests.length > 0 && (
+              <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-5 min-w-[1.25rem] flex items-center justify-center px-1">
+                {pendingRequests.length}
+              </span>
+            )}
+          </Link>
           <button className="p-2 rounded-full hover:bg-wispa-600">
             <Search className="h-5 w-5" />
           </button>
@@ -79,8 +95,9 @@ const ChatList: React.FC = () => {
               <ChatListItem
                 key={chat.id}
                 id={chat.id}
-                name={otherParticipant.username}
+                name={otherParticipant.username || 'Unknown User'}
                 avatar={otherParticipant.avatar_url || undefined}
+                userId={otherParticipant.user_id || undefined}
                 lastMessage={chat.lastMessage?.content}
                 timestamp={chat.lastMessage ? formatTimestamp(chat.lastMessage.created_at) : undefined}
                 unreadCount={chat.lastMessage && chat.lastMessage.user_id !== user?.id && chat.lastMessage.status !== 'read' ? 1 : 0}

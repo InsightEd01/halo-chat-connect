@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,6 +8,7 @@ export interface Profile {
   id: string;
   username: string;
   avatar_url: string | null;
+  user_id: string | null;
 }
 
 export interface Chat {
@@ -339,20 +341,20 @@ export function useSearchUsers(query: string) {
         }
       }
       
-      // If no results by UUID and it's a 6-digit ID, search in user_metadata
+      // If no results by UUID and it's a 6-digit ID, search by user_id in profiles table
       if (results.length === 0 && isSixDigitId) {
         console.log('Searching by 6-digit ID:', query);
         
-        // Using the RPC function to search by user_id in metadata
-        const { data: metadataResults, error: metadataError } = await supabase
-          .rpc('is_chat_participant', { search_user_id: query });
+        const { data: sixDigitResults, error: sixDigitError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', query)
+          .neq('id', user.id); // Don't include current user
           
-        if (metadataError) {
-          console.error('Error searching by user_id:', metadataError);
-          // Fall back to username search if RPC fails
-        } else if (metadataResults && Array.isArray(metadataResults)) {
-          // Filter out current user and ensure we have an array
-          results = metadataResults.filter(profile => profile.id !== user.id);
+        if (sixDigitError) throw sixDigitError;
+        
+        if (sixDigitResults && sixDigitResults.length > 0) {
+          results = sixDigitResults;
         }
       }
       

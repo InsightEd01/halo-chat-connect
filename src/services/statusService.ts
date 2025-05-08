@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,7 +18,7 @@ export function useStatusUpdates() {
         .from('status_updates')
         .select(`
           *,
-          profiles!status_updates_user_id_fkey (username, avatar_url)
+          profiles:user_id (username, avatar_url)
         `)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
@@ -107,7 +108,7 @@ export function useCreateStatus() {
         })
         .select(`
           *,
-          profiles!status_updates_user_id_fkey (username, avatar_url)
+          profiles:user_id (username, avatar_url)
         `)
         .single();
         
@@ -124,12 +125,19 @@ export function useCreateStatus() {
         viewedBy = Object.values(data.viewed_by as Record<string, string>).map(id => String(id));
       }
       
+      const defaultUser = {
+        username: 'Unknown User',
+        avatar_url: null
+      };
+      
+      const userProfile = data.profiles || defaultUser;
+      
       const processedData: StatusUpdate = {
         ...data,
         viewed_by: viewedBy,
         user: {
-          username: data.profiles?.username || 'Unknown User',
-          avatar_url: data.profiles?.avatar_url || null
+          username: userProfile.username || defaultUser.username,
+          avatar_url: userProfile.avatar_url
         }
       };
       
