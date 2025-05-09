@@ -1,123 +1,151 @@
-// Import the necessary functions and types
+
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { StatusUpdate, StatusView } from "@/types/status";
-import { toast } from "@/components/ui/use-toast";
+import { v4 as uuidv4 } from 'uuid';
+import { StatusUpdate } from "@/types/status";
 
-// Get status updates
+// Fetch all status updates
 export function useStatusUpdates() {
   const { user } = useAuth();
   
   return useQuery({
     queryKey: ['status-updates'],
     queryFn: async () => {
-      if (!user) throw new Error('User not authenticated');
-      
-      // Get current user's friends
-      const { data: friendships, error: friendshipError } = await supabase
-        .rpc('are_friends', { user1_id: user.id, user2_id: user.id });
-      
-      if (friendshipError) throw friendshipError;
-      
-      // Get all status updates from friends and the user's own statuses
-      const now = new Date().toISOString();
+      if (!user) throw new Error('No user');
       
       const { data, error } = await supabase
         .from('status_updates')
         .select(`
           *,
-          user:profiles(username, avatar_url)
+          profiles:user_id (username, avatar_url)
         `)
-        .gt('expires_at', now)
+        .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
-      
+        
       if (error) throw error;
-      
-      if (!data) return [];
-      
-      return data.map(status => {
-        const userProfile = status.user as any; // Handle potential error type
+
+      // Transform data to ensure viewed_by is always a string array and handle profiles properly
+      const processedData = data?.map(status => {
+        // Process viewed_by to ensure it's always a string array
+        let viewedBy: string[] = [];
+        
+        if (status.viewed_by === null) {
+          viewedBy = [];
+        } else if (Array.isArray(status.viewed_by)) {
+          viewedBy = status.viewed_by.map(id => String(id));
+        } else if (typeof status.viewed_by === 'object') {
+          viewedBy = Object.values(status.viewed_by as Record<string, string>).map(id => String(id));
+        }
+
+        // Default user object if profiles relation is missing or invalid
+        const defaultUser = {
+          username: 'Unknown User',
+          avatar_url: null
+        };
+        
+        // Safely access profiles data
+        const userProfile = status.profiles || defaultUser;
+        
         return {
           ...status,
+          viewed_by: viewedBy,
           user: {
-            username: userProfile?.username || 'Unknown User',
-            avatar_url: userProfile?.avatar_url || null
+            username: userProfile.username || defaultUser.username,
+            avatar_url: userProfile.avatar_url
           }
-        };
-      }) as StatusUpdate[];
+        } as StatusUpdate;
+      }) || [];
+      
+      return processedData;
     },
-    enabled: !!user
+    enabled: !!user,
   });
 }
 
 // Create a status update
 export function useCreateStatus() {
-  const queryClient = useQueryClient();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ content, mediaUrl }: { content?: string, mediaUrl?: string }) => {
-      if (!user) throw new Error('User not authenticated');
-      if (!content && !mediaUrl) throw new Error('Status must include content or media');
+    mutationFn: async ({ 
+      content, 
+      mediaFile 
+    }: { 
+      content?: string; 
+      mediaFile?: File;
+    }) => {
+      if (!user) throw new Error('No user');
       
-      // Calculate expiration (24 hours from now)
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24);
+      let mediaUrl = null;
       
-      // Create the status update
+      // Upload image if provided
+      if (mediaFile) {
+        const fileExt = mediaFile.name.split('.').pop();
+        const filePath = `${user.id}/${uuidv4()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('status')
+          .upload(filePath, mediaFile);
+          
+        if (uploadError) throw uploadError;
+        
+        const { data } = supabase.storage
+          .from('status')
+          .getPublicUrl(filePath);
+          
+        mediaUrl = data.publicUrl;
+      }
+      
+      // Create status update
       const { data, error } = await supabase
         .from('status_updates')
         .insert({
           user_id: user.id,
-          content,
+          content: content || null,
           media_url: mediaUrl,
-          expires_at: expiresAt.toISOString()
         })
-        .select()
+        .select(`
+          *,
+          profiles:user_id (username, avatar_url)
+        `)
         .single();
-      
+        
       if (error) throw error;
       
-      return data;
+      // Process viewed_by to ensure it's always a string array
+      let viewedBy: string[] = [];
+      
+      if (data.viewed_by === null) {
+        viewedBy = [];
+      } else if (Array.isArray(data.viewed_by)) {
+        viewedBy = data.viewed_by.map(id => String(id));
+      } else if (typeof data.viewed_by === 'object') {
+        viewedBy = Object.values(data.viewed_by as Record<string, string>).map(id => String(id));
+      }
+      
+      const defaultUser = {
+        username: 'Unknown User',
+        avatar_url: null
+      };
+      
+      const userProfile = data.profiles || defaultUser;
+      
+      const processedData: StatusUpdate = {
+        ...data,
+        viewed_by: viewedBy,
+        user: {
+          username: userProfile.username || defaultUser.username,
+          avatar_url: userProfile.avatar_url
+        }
+      };
+      
+      return processedData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['status-updates'] });
-      toast({
-        title: "Status updated",
-        description: "Your status has been posted."
-      });
-    }
-  });
-}
-
-// Get a specific status update
-export function useStatusDetail(statusId: string) {
-  return useQuery({
-    queryKey: ['status', statusId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('status_updates')
-        .select(`
-          *,
-          user:profiles(username, avatar_url)
-        `)
-        .eq('id', statusId)
-        .single();
-      
-      if (error) throw error;
-      
-      const userProfile = data.user as any; // Handle potential error type
-      
-      return {
-        ...data,
-        user: {
-          username: userProfile?.username || 'Unknown User',
-          avatar_url: userProfile?.avatar_url || null
-        }
-      } as StatusUpdate;
     },
-    enabled: !!statusId
   });
 }
 
@@ -126,22 +154,64 @@ export function useDeleteStatus() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (statusId: string) => {
-      const { data, error } = await supabase
+    mutationFn: async ({ 
+      statusId, 
+      mediaUrl 
+    }: { 
+      statusId: string; 
+      mediaUrl?: string | null;
+    }) => {
+      // Delete media from storage if exists
+      if (mediaUrl) {
+        const mediaPath = mediaUrl.split('/').slice(-2).join('/');
+        const { error: storageError } = await supabase.storage
+          .from('status')
+          .remove([mediaPath]);
+          
+        if (storageError) {
+          console.error('Error deleting media:', storageError);
+        }
+      }
+      
+      // Delete status from database
+      const { error } = await supabase
         .from('status_updates')
         .delete()
         .eq('id', statusId);
-      
+        
       if (error) throw error;
       
-      return data;
+      return { success: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['status-updates'] });
-      toast({
-        title: "Status deleted",
-        description: "Your status has been removed."
-      });
-    }
+    },
+  });
+}
+
+// Mark a status as viewed
+export function useViewStatus() {
+  const { user } = useAuth();
+  
+  return useMutation({
+    mutationFn: async ({ statusId }: { statusId: string }) => {
+      if (!user) throw new Error('No user');
+      
+      const { data, error } = await supabase
+        .from('status_views')
+        .insert({
+          status_id: statusId,
+          viewer_id: user.id,
+        })
+        .select()
+        .single();
+        
+      // We're ok with error if it's a uniqueness violation (already viewed)
+      if (error && !error.message.includes('unique constraint')) {
+        throw error;
+      }
+      
+      return data;
+    },
   });
 }

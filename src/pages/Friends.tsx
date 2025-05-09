@@ -9,7 +9,6 @@ import Avatar from '@/components/Avatar';
 import NavBar from '@/components/NavBar';
 import EmptyState from '@/components/EmptyState';
 import FriendRequestCard from '@/components/FriendRequestCard';
-import UserSearchResult from '@/components/UserSearchResult';
 import { toast } from '@/components/ui/use-toast';
 import { 
   useFriendRequests, 

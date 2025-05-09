@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,8 +45,8 @@ export function useFriendRequests() {
         .from('friend_requests')
         .select(`
           *,
-          sender:profiles!friend_requests_sender_id_fkey(id, username, avatar_url, user_id),
-          recipient:profiles!friend_requests_recipient_id_fkey(id, username, avatar_url, user_id)
+          sender:sender_id(id, username, avatar_url, user_id),
+          recipient:recipient_id(id, username, avatar_url, user_id)
         `)
         .eq('sender_id', user.id);
         
@@ -56,16 +57,16 @@ export function useFriendRequests() {
         .from('friend_requests')
         .select(`
           *,
-          sender:profiles!friend_requests_sender_id_fkey(id, username, avatar_url, user_id),
-          recipient:profiles!friend_requests_recipient_id_fkey(id, username, avatar_url, user_id)
+          sender:sender_id(id, username, avatar_url, user_id),
+          recipient:recipient_id(id, username, avatar_url, user_id)
         `)
         .eq('recipient_id', user.id);
         
       if (receivedError) throw receivedError;
       
       return {
-        sent: sentRequests as unknown as FriendRequest[],
-        received: receivedRequests as unknown as FriendRequest[]
+        sent: sentRequests as FriendRequest[],
+        received: receivedRequests as FriendRequest[]
       };
     },
     enabled: !!user,
@@ -86,7 +87,7 @@ export function useFriendships() {
         .from('friendships')
         .select(`
           *,
-          friend:profiles!friendships_friend_id_fkey(id, username, avatar_url, user_id)
+          friend:friend_id(id, username, avatar_url, user_id)
         `)
         .eq('user_id', user.id);
         
@@ -97,7 +98,7 @@ export function useFriendships() {
         .from('friendships')
         .select(`
           *,
-          friend:profiles!friendships_user_id_fkey(id, username, avatar_url, user_id)
+          friend:user_id(id, username, avatar_url, user_id)
         `)
         .eq('friend_id', user.id);
         
@@ -115,7 +116,7 @@ export function useFriendships() {
         }))
       ];
       
-      return allFriends as unknown as Friendship[];
+      return allFriends as Friendship[];
     },
     enabled: !!user,
   });
