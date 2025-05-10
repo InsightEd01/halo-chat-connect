@@ -115,12 +115,7 @@ const Status: React.FC = () => {
 
   const handleDeleteStatus = async (statusId: string) => {
     try {
-      const statusToDelete = statusUpdates.find(s => s.id === statusId);
-      
-      await deleteStatus({
-        statusId,
-        mediaUrl: statusToDelete?.media_url || null
-      });
+      await deleteStatus(statusId);
       
       toast({
         title: 'Status deleted',

@@ -50,8 +50,7 @@ serve(async (req) => {
       );
     }
 
-    // Get user by auth.users.raw_user_meta_data->>'user_id' = $1
-    // Query the auth schema using the service role to search for users with the specified 6-digit ID
+    // Use the search_users_by_user_id function
     const { data, error } = await supabaseClient.rpc('search_users_by_user_id', {
       search_user_id: userId
     });

@@ -154,16 +154,19 @@ export function useDeleteStatus() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ 
-      statusId, 
-      mediaUrl 
-    }: { 
-      statusId: string; 
-      mediaUrl?: string | null;
-    }) => {
+    mutationFn: async (statusId: string) => {
+      // Get status details first to get media URL if exists
+      const { data: status, error: fetchError } = await supabase
+        .from('status_updates')
+        .select('media_url')
+        .eq('id', statusId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
       // Delete media from storage if exists
-      if (mediaUrl) {
-        const mediaPath = mediaUrl.split('/').slice(-2).join('/');
+      if (status?.media_url) {
+        const mediaPath = status.media_url.split('/').slice(-2).join('/');
         const { error: storageError } = await supabase.storage
           .from('status')
           .remove([mediaPath]);
@@ -192,6 +195,7 @@ export function useDeleteStatus() {
 // Mark a status as viewed
 export function useViewStatus() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async ({ statusId }: { statusId: string }) => {
@@ -210,6 +214,9 @@ export function useViewStatus() {
       if (error && !error.message.includes('unique constraint')) {
         throw error;
       }
+      
+      // Update local data
+      queryClient.invalidateQueries({ queryKey: ['status-updates'] });
       
       return data;
     },
