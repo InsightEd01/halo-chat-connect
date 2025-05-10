@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,12 +14,12 @@ export function useStatusUpdates() {
     queryFn: async () => {
       if (!user) throw new Error('No user');
       
-      // Fixed the join with profiles table
+      // Fixed the join with profiles table - explicitly reference the column
       const { data, error } = await supabase
         .from('status_updates')
         .select(`
           *,
-          user:profiles!status_updates_user_id_fkey(username, avatar_url)
+          profiles!status_updates_user_id_fkey(username, avatar_url)
         `)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
@@ -38,8 +39,8 @@ export function useStatusUpdates() {
           viewedBy = Object.values(status.viewed_by as Record<string, string>).map(id => String(id));
         }
 
-        // Handle user information - make sure we check if it exists
-        const userProfile = status.user || { username: 'Unknown User', avatar_url: null };
+        // Safely handle user information with proper type checking
+        const userProfile = status.profiles || { username: 'Unknown User', avatar_url: null };
         
         return {
           ...status,
@@ -102,7 +103,7 @@ export function useCreateStatus() {
         })
         .select(`
           *,
-          user:profiles!status_updates_user_id_fkey(username, avatar_url)
+          profiles!status_updates_user_id_fkey(username, avatar_url)
         `)
         .single();
         
@@ -119,8 +120,8 @@ export function useCreateStatus() {
         viewedBy = Object.values(data.viewed_by as Record<string, string>).map(id => String(id));
       }
       
-      // Handle user information safely
-      const userProfile = data.user || { username: 'Unknown User', avatar_url: null };
+      // Safely handle user information with proper type checking
+      const userProfile = data.profiles || { username: 'Unknown User', avatar_url: null };
       
       const processedData: StatusUpdate = {
         ...data,
