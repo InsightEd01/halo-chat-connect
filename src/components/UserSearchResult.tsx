@@ -114,7 +114,7 @@ const UserSearchResult: React.FC<UserSearchResultProps> = ({ user }) => {
             src={user.avatar_url || undefined}
             alt={user.username || 'User'}
           >
-            <User className="h-5 w-5" />
+            {/* Removed the children props that caused the error */}
           </Avatar>
           <div className="ml-3">
             <h3 className="font-medium">{user.username || 'User'}</h3>

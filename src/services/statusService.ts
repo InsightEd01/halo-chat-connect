@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,11 +13,12 @@ export function useStatusUpdates() {
     queryFn: async () => {
       if (!user) throw new Error('No user');
       
+      // Fixed the join with profiles table
       const { data, error } = await supabase
         .from('status_updates')
         .select(`
           *,
-          profiles:user_id (username, avatar_url)
+          user:profiles!status_updates_user_id_fkey(username, avatar_url)
         `)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
@@ -38,20 +38,14 @@ export function useStatusUpdates() {
           viewedBy = Object.values(status.viewed_by as Record<string, string>).map(id => String(id));
         }
 
-        // Default user object if profiles relation is missing or invalid
-        const defaultUser = {
-          username: 'Unknown User',
-          avatar_url: null
-        };
-        
-        // Safely access profiles data
-        const userProfile = status.profiles || defaultUser;
+        // Handle user information - make sure we check if it exists
+        const userProfile = status.user || { username: 'Unknown User', avatar_url: null };
         
         return {
           ...status,
           viewed_by: viewedBy,
           user: {
-            username: userProfile.username || defaultUser.username,
+            username: userProfile.username || 'Unknown User',
             avatar_url: userProfile.avatar_url
           }
         } as StatusUpdate;
@@ -108,7 +102,7 @@ export function useCreateStatus() {
         })
         .select(`
           *,
-          profiles:user_id (username, avatar_url)
+          user:profiles!status_updates_user_id_fkey(username, avatar_url)
         `)
         .single();
         
@@ -125,18 +119,14 @@ export function useCreateStatus() {
         viewedBy = Object.values(data.viewed_by as Record<string, string>).map(id => String(id));
       }
       
-      const defaultUser = {
-        username: 'Unknown User',
-        avatar_url: null
-      };
-      
-      const userProfile = data.profiles || defaultUser;
+      // Handle user information safely
+      const userProfile = data.user || { username: 'Unknown User', avatar_url: null };
       
       const processedData: StatusUpdate = {
         ...data,
         viewed_by: viewedBy,
         user: {
-          username: userProfile.username || defaultUser.username,
+          username: userProfile.username || 'Unknown User',
           avatar_url: userProfile.avatar_url
         }
       };

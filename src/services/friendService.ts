@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,25 +39,25 @@ export function useFriendRequests() {
     queryFn: async () => {
       if (!user) throw new Error('No user');
       
-      // Get sent requests
+      // Get sent requests - fix column hinting for proper relationship
       const { data: sentRequests, error: sentError } = await supabase
         .from('friend_requests')
         .select(`
           *,
-          sender:sender_id(id, username, avatar_url, user_id),
-          recipient:recipient_id(id, username, avatar_url, user_id)
+          sender:profiles!friend_requests_sender_id_fkey(id, username, avatar_url, user_id),
+          recipient:profiles!friend_requests_recipient_id_fkey(id, username, avatar_url, user_id)
         `)
         .eq('sender_id', user.id);
         
       if (sentError) throw sentError;
       
-      // Get received requests
+      // Get received requests - fix column hinting for proper relationship
       const { data: receivedRequests, error: receivedError } = await supabase
         .from('friend_requests')
         .select(`
           *,
-          sender:sender_id(id, username, avatar_url, user_id),
-          recipient:recipient_id(id, username, avatar_url, user_id)
+          sender:profiles!friend_requests_sender_id_fkey(id, username, avatar_url, user_id),
+          recipient:profiles!friend_requests_recipient_id_fkey(id, username, avatar_url, user_id)
         `)
         .eq('recipient_id', user.id);
         
@@ -82,23 +81,23 @@ export function useFriendships() {
     queryFn: async () => {
       if (!user) throw new Error('No user');
       
-      // Get friends where user is the user_id
+      // Get friends where user is the user_id - fix column hinting
       const { data: directFriends, error: directError } = await supabase
         .from('friendships')
         .select(`
           *,
-          friend:friend_id(id, username, avatar_url, user_id)
+          friend:profiles!friendships_friend_id_fkey(id, username, avatar_url, user_id)
         `)
         .eq('user_id', user.id);
         
       if (directError) throw directError;
       
-      // Get friends where user is the friend_id
+      // Get friends where user is the friend_id - fix column hinting
       const { data: inverseFriends, error: inverseError } = await supabase
         .from('friendships')
         .select(`
           *,
-          friend:user_id(id, username, avatar_url, user_id)
+          friend:profiles!friendships_user_id_fkey(id, username, avatar_url, user_id)
         `)
         .eq('friend_id', user.id);
         
@@ -271,6 +270,54 @@ export function useRemoveFriend() {
         description: "This user has been removed from your friends list.",
       });
     },
+  });
+}
+
+// Check friend request status for a specific user
+export function useFriendRequestStatus(userId: string | undefined) {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ['friend-request-status', user?.id, userId],
+    queryFn: async () => {
+      if (!user || !userId) return { isFriend: false, requestSent: false, requestReceived: false };
+      
+      // Check if users are friends
+      const { data: isFriend, error: friendError } = await supabase
+        .rpc('are_friends', {
+          user1_id: user.id,
+          user2_id: userId
+        });
+        
+      if (friendError) throw friendError;
+      
+      // Check if there's a pending friend request from current user to the specified user
+      const { data: sentRequests, error: sentError } = await supabase
+        .from('friend_requests')
+        .select('*')
+        .eq('sender_id', user.id)
+        .eq('recipient_id', userId)
+        .eq('status', 'pending');
+        
+      if (sentError) throw sentError;
+      
+      // Check if there's a pending friend request from specified user to current user
+      const { data: receivedRequests, error: receivedError } = await supabase
+        .from('friend_requests')
+        .select('*')
+        .eq('sender_id', userId)
+        .eq('recipient_id', user.id)
+        .eq('status', 'pending');
+        
+      if (receivedError) throw receivedError;
+      
+      return { 
+        isFriend: !!isFriend, 
+        requestSent: sentRequests && sentRequests.length > 0,
+        requestReceived: receivedRequests && receivedRequests.length > 0
+      };
+    },
+    enabled: !!user && !!userId,
   });
 }
 
