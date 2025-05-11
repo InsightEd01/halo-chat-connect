@@ -75,7 +75,7 @@ const ChatList: React.FC = () => {
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto wispa-content-with-navbar">
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
             <p>Loading conversations...</p>

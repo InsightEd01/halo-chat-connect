@@ -14,12 +14,12 @@ export function useStatusUpdates() {
     queryFn: async () => {
       if (!user) throw new Error('No user');
       
-      // Fixed the join with profiles table - explicitly reference the column
+      // Fixed the join syntax by using the foreign key name
       const { data, error } = await supabase
         .from('status_updates')
         .select(`
           *,
-          profiles!status_updates_user_id_fkey(username, avatar_url)
+          user:profiles(username, avatar_url)
         `)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
@@ -39,15 +39,22 @@ export function useStatusUpdates() {
           viewedBy = Object.values(status.viewed_by as Record<string, string>).map(id => String(id));
         }
 
+        // Type guard to check if user exists and has expected properties
+        const isValidUserProfile = status.user && 
+          typeof status.user === 'object' && 
+          'username' in status.user &&
+          'avatar_url' in status.user;
+
         // Safely handle user information with proper type checking
-        const userProfile = status.profiles || { username: 'Unknown User', avatar_url: null };
+        const username = isValidUserProfile ? status.user.username : 'Unknown User';
+        const avatarUrl = isValidUserProfile ? status.user.avatar_url : null;
         
         return {
           ...status,
           viewed_by: viewedBy,
           user: {
-            username: userProfile.username || 'Unknown User',
-            avatar_url: userProfile.avatar_url
+            username: username,
+            avatar_url: avatarUrl
           }
         } as StatusUpdate;
       }) || [];
@@ -103,7 +110,7 @@ export function useCreateStatus() {
         })
         .select(`
           *,
-          profiles!status_updates_user_id_fkey(username, avatar_url)
+          user:profiles(username, avatar_url)
         `)
         .single();
         
@@ -120,15 +127,22 @@ export function useCreateStatus() {
         viewedBy = Object.values(data.viewed_by as Record<string, string>).map(id => String(id));
       }
       
+      // Type guard to check if user exists and has expected properties
+      const isValidUserProfile = data.user && 
+        typeof data.user === 'object' && 
+        'username' in data.user &&
+        'avatar_url' in data.user;
+
       // Safely handle user information with proper type checking
-      const userProfile = data.profiles || { username: 'Unknown User', avatar_url: null };
+      const username = isValidUserProfile ? data.user.username : 'Unknown User';
+      const avatarUrl = isValidUserProfile ? data.user.avatar_url : null;
       
       const processedData: StatusUpdate = {
         ...data,
         viewed_by: viewedBy,
         user: {
-          username: userProfile.username || 'Unknown User',
-          avatar_url: userProfile.avatar_url
+          username: username,
+          avatar_url: avatarUrl
         }
       };
       

@@ -147,4 +147,22 @@
   .wispa-btn-secondary {
     @apply bg-gray-100 text-gray-800 hover:bg-gray-200;
   }
+  
+  /* Updated navbar styles for WhatsApp-like bottom navigation */
+  .wispa-navbar {
+    @apply fixed bottom-0 left-0 right-0 bg-white flex items-center justify-around border-t py-2 z-10 max-w-md mx-auto;
+  }
+  
+  .wispa-navbar-item {
+    @apply flex flex-col items-center justify-center px-4 py-1 text-gray-500;
+  }
+  
+  .wispa-navbar-item-active {
+    @apply text-wispa-500;
+  }
+  
+  /* Add padding to the bottom of scrollable content areas to account for navbar */
+  .wispa-content-with-navbar {
+    @apply pb-16;
+  }
 }

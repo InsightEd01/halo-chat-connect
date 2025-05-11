@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MessageSquare, Phone, User, Users } from 'lucide-react';
+import { MessageSquare, Phone, ImageIcon, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFriendRequests } from '@/services/friendService';
 
@@ -39,6 +39,17 @@ const NavBar: React.FC = () => {
       </Link>
       
       <Link
+        to="/status"
+        className={cn(
+          "wispa-navbar-item",
+          isActive('/status') && "wispa-navbar-item-active"
+        )}
+      >
+        <ImageIcon className="h-6 w-6" />
+        <span className="text-xs mt-1">Status</span>
+      </Link>
+      
+      <Link
         to="/calls"
         className={cn(
           "wispa-navbar-item",
@@ -50,29 +61,18 @@ const NavBar: React.FC = () => {
       </Link>
       
       <Link
-        to="/friends"
-        className={cn(
-          "wispa-navbar-item relative",
-          isActive('/friends') && "wispa-navbar-item-active"
-        )}
-      >
-        <Users className="h-6 w-6" />
-        {pendingRequests.length > 0 && (
-          <span className="absolute top-0 right-4 bg-red-500 text-white text-xs rounded-full h-4 min-w-[1rem] flex items-center justify-center">
-            {pendingRequests.length}
-          </span>
-        )}
-        <span className="text-xs mt-1">Friends</span>
-      </Link>
-      
-      <Link
         to="/profile"
         className={cn(
-          "wispa-navbar-item",
+          "wispa-navbar-item relative",
           isActive('/profile') && "wispa-navbar-item-active"
         )}
       >
         <User className="h-6 w-6" />
+        {pendingRequests.length > 0 && (
+          <span className="absolute top-0 right-2 bg-red-500 text-white text-xs rounded-full h-4 min-w-[1rem] flex items-center justify-center">
+            {pendingRequests.length}
+          </span>
+        )}
         <span className="text-xs mt-1">Profile</span>
       </Link>
     </div>

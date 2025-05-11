@@ -71,7 +71,7 @@ const ChatDetail: React.FC = () => {
           <Link to="/chats" className="mr-2">
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <Avatar src={otherParticipant.avatar_url || undefined} alt={otherParticipant.username} status={null} />
+          <Avatar src={otherParticipant.avatar_url || undefined} alt={otherParticipant.username || ''} status={null} />
           <div className="ml-3">
             <h2 className="font-medium">{otherParticipant.username}</h2>
             <p className="text-xs text-wispa-100">
