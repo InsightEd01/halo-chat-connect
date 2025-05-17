@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, AlertCircle, UserPlus } from 'lucide-react';
@@ -14,6 +13,7 @@ import { Button } from '@/components/ui/button';
 const NewChat: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [lastCreatedUserId, setLastCreatedUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -44,15 +44,17 @@ const NewChat: React.FC = () => {
   } = useSendFriendRequest();
 
   const handleSelectUser = (userId: string) => {
-    if (isCreatingChat) return;
-    
+    if (isCreatingChat || lastCreatedUserId === userId) return;
+    setLastCreatedUserId(userId);
     createChat(
       { participantId: userId },
       {
         onSuccess: (chatId) => {
+          setLastCreatedUserId(null); // Reset after success
           navigate(`/chat/${chatId}`);
         },
         onError: (error) => {
+          setLastCreatedUserId(null); // Reset on error
           toast({
             title: "Error creating chat",
             description: error.message,

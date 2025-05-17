@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,16 +16,13 @@ export function useStatusUpdates() {
       // Fixed the join syntax by using the foreign key name
       const { data, error } = await supabase
         .from('status_updates')
-        .select(`
-          *,
-          user:profiles(username, avatar_url)
-        `)
+        .select('*')
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
         
       if (error) throw error;
 
-      // Transform data to ensure viewed_by is always a string array and handle profiles properly
+      // Transform data to ensure viewed_by is always a string array
       const processedData = data?.map(status => {
         // Process viewed_by to ensure it's always a string array
         let viewedBy: string[] = [];
@@ -39,22 +35,13 @@ export function useStatusUpdates() {
           viewedBy = Object.values(status.viewed_by as Record<string, string>).map(id => String(id));
         }
 
-        // Type guard to check if user exists and has expected properties
-        const isValidUserProfile = status.user && 
-          typeof status.user === 'object' && 
-          'username' in status.user &&
-          'avatar_url' in status.user;
-
-        // Safely handle user information with proper type checking
-        const username = isValidUserProfile ? status.user.username : 'Unknown User';
-        const avatarUrl = isValidUserProfile ? status.user.avatar_url : null;
-        
+        // No user profile info available directly, just return user_id
         return {
           ...status,
           viewed_by: viewedBy,
           user: {
-            username: username,
-            avatar_url: avatarUrl
+            username: null,
+            avatar_url: null
           }
         } as StatusUpdate;
       }) || [];
@@ -108,10 +95,7 @@ export function useCreateStatus() {
           content: content || null,
           media_url: mediaUrl,
         })
-        .select(`
-          *,
-          user:profiles(username, avatar_url)
-        `)
+        .select('*')
         .single();
         
       if (error) throw error;
@@ -127,22 +111,13 @@ export function useCreateStatus() {
         viewedBy = Object.values(data.viewed_by as Record<string, string>).map(id => String(id));
       }
       
-      // Type guard to check if user exists and has expected properties
-      const isValidUserProfile = data.user && 
-        typeof data.user === 'object' && 
-        'username' in data.user &&
-        'avatar_url' in data.user;
-
-      // Safely handle user information with proper type checking
-      const username = isValidUserProfile ? data.user.username : 'Unknown User';
-      const avatarUrl = isValidUserProfile ? data.user.avatar_url : null;
-      
+      // No user profile info available directly, just return user_id
       const processedData: StatusUpdate = {
         ...data,
         viewed_by: viewedBy,
         user: {
-          username: username,
-          avatar_url: avatarUrl
+          username: null,
+          avatar_url: null
         }
       };
       
