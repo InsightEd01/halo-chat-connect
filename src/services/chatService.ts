@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 
 import { supabase } from "@/integrations/supabase/client";
+=======
+import { supabase } from "@/integrations/supabase/client";                        
+>>>>>>> 1e70aa6 (chatService: Fix chat message sending issue)
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -48,141 +52,159 @@ export function useUserChats() {
     queryFn: async () => {
       if (!user) throw new Error('No user');
       
-      // Get all chats the user participates in
-      const { data: participantsData, error: participantsError } = await supabase
-        .from('participants')
-        .select('chat_id')
-        .eq('user_id', user.id);
+      try {
+        // Get all chats with participants, profiles and messages in a single query
+        const { data: chats, error: chatsError } = await supabase
+          .from('chats')
+          .select(`
+            *,
+            participants:participants!inner(
+              user_id,
+              user:profiles!participants_user_id_fkey(
+                id,
+                username,
+                avatar_url
+              )
+            ),
+            last_message:messages!messages_chat_id_fkey(
+              *,
+              user:profiles!messages_user_id_fkey(
+                id,
+                username,
+                avatar_url
+              )
+            )
+          `)
+          .eq('participants.user_id', user.id)
+          .order('updated_at', { ascending: false })
+          .order('last_message.created_at', { foreignTable: 'messages', ascending: false })
+          .limit(1, { foreignTable: 'messages' });
+          
+        if (chatsError) throw chatsError;
         
-      if (participantsError) throw participantsError;
-      
-      if (!participantsData.length) return [];
-      
-      const chatIds = participantsData.map(p => p.chat_id);
-      
-      // Get all chat details
-      const { data: chats, error: chatsError } = await supabase
-        .from('chats')
-        .select('*')
-        .in('id', chatIds)
-        .order('updated_at', { ascending: false });
+        if (!chats) return [];
         
-      if (chatsError) throw chatsError;
-      
-      // For each chat, get participants and last message
-      const enhancedChats = await Promise.all(
-        chats.map(async (chat) => {
-          // Get all participants for this chat
-          const { data: participants, error: participantsError } = await supabase
-            .from('participants')
-            .select('user_id')
-            .eq('chat_id', chat.id);
-            
-          if (participantsError) throw participantsError;
-          
-          // Get profiles for all participants
-          const participantIds = participants.map(p => p.user_id);
-          const { data: profiles, error: profilesError } = await supabase
-            .from('profiles')
-            .select('*')
-            .in('id', participantIds);
-            
-          if (profilesError) throw profilesError;
-          
-          // Get last message for this chat
-          const { data: messages, error: messagesError } = await supabase
-            .from('messages')
-            .select('*')
-            .eq('chat_id', chat.id)
-            .order('created_at', { ascending: false })
-            .limit(1);
-            
-          if (messagesError) throw messagesError;
-          
-          return {
-            ...chat,
-            participants: profiles,
-            lastMessage: messages.length > 0 ? messages[0] : undefined
-          };
-        })
-      );
-      
-      return enhancedChats;
+        // Transform the data into the expected format
+        return chats.map(chat => ({
+          id: chat.id,
+          created_at: chat.created_at,
+          updated_at: chat.updated_at,
+          participants: chat.participants.map(p => p.user),
+          lastMessage: chat.last_message?.[0] ? {
+            ...chat.last_message[0],
+            user: chat.last_message[0].user
+          } : undefined
+        }));
+      } catch (error) {
+        console.error('Error fetching chats:', error);
+        throw error;
+      }
     },
     enabled: !!user,
+    staleTime: 1000 * 30, // Cache for 30 seconds
+    refetchInterval: 5000, // Check for new messages every 5 seconds
+    retry: (failureCount, error) => {
+      // Only retry 3 times for non-404 errors
+      return failureCount < 3 && !error.message?.includes('404');
+    }
   });
 }
 
 // Fetch single chat with all messages
 export function useChat(chatId: string | undefined) {
   const { user } = useAuth();
-  
+  const queryClient = useQueryClient();
+
   return useQuery({
     queryKey: ['chat', chatId],
     queryFn: async () => {
       if (!chatId || !user) throw new Error('No chat ID or user');
       
-      // Get chat details
-      const { data: chat, error: chatError } = await supabase
-        .from('chats')
-        .select('*')
-        .eq('id', chatId)
-        .single();
+      try {
+        // Get chat with all related data in a single query
+        const { data: chat, error: chatError } = await supabase
+          .from('chats')
+          .select(`
+            *,
+            participants:participants!inner(
+              user_id,
+              user:profiles!participants_user_id_fkey(
+                id,
+                username,
+                avatar_url
+              )
+            ),
+            messages:messages(
+              *,
+              user:profiles!messages_user_id_fkey(
+                id,
+                username,
+                avatar_url
+              )
+            )
+          `)
+          .eq('id', chatId)
+          .order('messages.created_at', { ascending: true })
+          .single();
+          
+        if (chatError) throw chatError;
         
-      if (chatError) throw chatError;
-      
-      // Get all participants
-      const { data: participants, error: participantsError } = await supabase
-        .from('participants')
-        .select('user_id')
-        .eq('chat_id', chatId);
+        if (!chat) throw new Error('Chat not found');
         
-      if (participantsError) throw participantsError;
-      
-      // Get profiles for all participants
-      const participantIds = participants.map(p => p.user_id);
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', participantIds);
+        // Mark unread messages as read in the background
+        const unreadMessages = chat.messages.filter(msg => 
+          msg.user_id !== user.id && msg.status !== 'read'
+        );
         
-      if (profilesError) throw profilesError;
-      
-      // Get all messages for this chat
-      const { data: messages, error: messagesError } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('chat_id', chatId)
-        .order('created_at', { ascending: true });
+        if (unreadMessages.length > 0) {
+          // Update message status without triggering a refetch
+          const updatePromise = supabase
+            .from('messages')
+            .update({ status: 'read' })
+            .eq('chat_id', chatId)
+            .neq('user_id', user.id)
+            .neq('status', 'read');
+            
+          // Don't await this, let it run in background
+          updatePromise.then(() => {
+            // Update local cache without triggering a refetch
+            queryClient.setQueryData(['chat', chatId], (oldData: any) => {
+              if (!oldData) return oldData;
+              return {
+                ...oldData,
+                messages: oldData.messages.map((msg: Message) => ({
+                  ...msg,
+                  status: msg.user_id !== user.id ? 'read' : msg.status
+                }))
+              };
+            });
+          }).catch(error => {
+            console.error('Error marking messages as read:', error);
+          });
+        }
         
-      if (messagesError) throw messagesError;
-      
-      // Mark messages as read if they were sent to the current user
-      await supabase
-        .from('messages')
-        .update({ status: 'read' })
-        .eq('chat_id', chatId)
-        .neq('user_id', user.id)
-        .neq('status', 'read');
-      
-      // Add user info to each message
-      const messagesWithUsers = await Promise.all(
-        messages.map(async (message) => {
-          const profile = profiles.find(p => p.id === message.user_id);
-          return {
-            ...message,
-            user: profile
-          };
-        })
-      );
-      
-      return {
-        ...chat,
-        participants: profiles,
-        messages: messagesWithUsers
-      };
+        return {
+          id: chat.id,
+          created_at: chat.created_at,
+          updated_at: chat.updated_at,
+          participants: chat.participants.map(p => p.user),
+          messages: chat.messages.map(msg => ({
+            ...msg,
+            user: msg.user
+          }))
+        };
+      } catch (error) {
+        console.error('Error fetching chat:', error);
+        throw error;
+      }
     },
     enabled: !!chatId && !!user,
+    staleTime: 1000 * 10, // Cache for 10 seconds
+    refetchInterval: 3000, // Check for new messages every 3 seconds
+    retry: (failureCount, error) => {
+      // Only retry 3 times for non-404 errors
+      return failureCount < 3 && !error.message?.includes('404');
+    }
   });
 }
 
@@ -210,7 +232,10 @@ export function useSendMessage() {
           content,
           status: 'sent'
         })
-        .select()
+        .select(`
+          *,
+          user:profiles!messages_user_id_fkey (*)
+        `)
         .single();
         
       if (error) throw error;
@@ -224,10 +249,37 @@ export function useSendMessage() {
       return data;
     },
     onSuccess: (_data, variables) => {
-      // Invalidate queries to refetch data
-      queryClient.invalidateQueries({ queryKey: ['chat', variables.chatId] });
-      queryClient.invalidateQueries({ queryKey: ['chats', user?.id] });
-    },
+      // Update the chat query data instead of invalidating
+      queryClient.setQueriesData(
+        { queryKey: ['chat', variables.chatId] },
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            messages: [...oldData.messages, _data],
+            updated_at: new Date().toISOString()
+          };
+        }
+      );
+      
+      // Update the chats list query data
+      queryClient.setQueriesData(
+        { queryKey: ['chats'] },
+        (oldData: any[]) => {
+          if (!oldData) return oldData;
+          return oldData.map(chat => {
+            if (chat.id === variables.chatId) {
+              return {
+                ...chat,
+                lastMessage: _data,
+                updated_at: new Date().toISOString()
+              };
+            }
+            return chat;
+          });
+        }
+      );
+    }
   });
 }
 
@@ -237,72 +289,93 @@ export function useCreateChat() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ 
-      participantId 
-    }: { 
-      participantId: string 
-    }) => {
+    mutationFn: async ({ participantId }: { participantId: string }) => {
       if (!user) throw new Error('No user');
       
-      // First check if a chat already exists with this participant
-      const { data: existingParticipants, error: existingError } = await supabase
-        .from('participants')
-        .select('chat_id')
-        .eq('user_id', user.id);
-        
-      if (existingError) throw existingError;
-      
-      const chatIds = existingParticipants.map(p => p.chat_id);
-      
-      if (chatIds.length) {
-        const { data: existingChat, error: participantError } = await supabase
-          .from('participants')
-          .select('chat_id')
-          .eq('user_id', participantId)
-          .in('chat_id', chatIds);
+      try {
+        // First check if a chat already exists between these users
+        const { data: existingChats, error: existingError } = await supabase
+          .from('chats')
+          .select(`
+            id,
+            participants!inner (
+              user_id
+            )
+          `)
+          .eq('participants.user_id', user.id);
           
-        if (participantError) throw participantError;
-        
-        if (existingChat.length > 0) {
-          return existingChat[0].chat_id; // Chat already exists, return its ID
+        if (existingError) {
+          console.error('Error checking existing chats:', existingError);
+          throw existingError;
         }
+        
+        // From these chats, find one where the other user is a participant
+        for (const chat of existingChats || []) {
+          const { data: otherParticipant, error: participantError } = await supabase
+            .from('participants')
+            .select('chat_id')
+            .eq('chat_id', chat.id)
+            .eq('user_id', participantId)
+            .single();
+            
+          if (participantError && participantError.code !== 'PGRST116') {
+            console.error('Error checking participant:', participantError);
+            continue;
+          }
+          
+          if (otherParticipant) {
+            return chat.id; // Chat already exists
+          }
+        }
+        
+        // Create new chat
+        const { data: chat, error: chatError } = await supabase
+          .from('chats')
+          .insert({})
+          .select()
+          .single();
+          
+        if (chatError) {
+          console.error('Error creating chat:', chatError);
+          throw chatError;
+        }
+        
+        // Add both participants in a transaction-like operation
+        const { error: participantsError } = await supabase
+          .from('participants')
+          .insert([
+            { chat_id: chat.id, user_id: user.id },
+            { chat_id: chat.id, user_id: participantId }
+          ]);
+          
+        if (participantsError) {
+          // Clean up the chat if participant creation fails
+          await supabase
+            .from('chats')
+            .delete()
+            .eq('id', chat.id);
+            
+          console.error('Error adding participants:', participantsError);
+          throw participantsError;
+        }
+        
+        return chat.id;
+      } catch (error) {
+        console.error('Error creating chat:', error);
+        throw error;
       }
-      
-      // Create a new chat
-      const { data: chat, error: chatError } = await supabase
-        .from('chats')
-        .insert({})
-        .select()
-        .single();
-        
-      if (chatError) throw chatError;
-      
-      // Add current user as participant
-      const { error: currentUserError } = await supabase
-        .from('participants')
-        .insert({
-          chat_id: chat.id,
-          user_id: user.id
-        });
-        
-      if (currentUserError) throw currentUserError;
-      
-      // Add other user as participant
-      const { error: otherUserError } = await supabase
-        .from('participants')
-        .insert({
-          chat_id: chat.id,
-          user_id: participantId
-        });
-        
-      if (otherUserError) throw otherUserError;
-      
-      return chat.id;
     },
-    onSuccess: () => {
-      // Invalidate queries to refetch data
-      queryClient.invalidateQueries({ queryKey: ['chats', user?.id] });
-    },
+    onSuccess: (chatId) => {
+      // Fetch the new chat and update the cache
+      queryClient.invalidateQueries({ 
+        queryKey: ['chats', user?.id],
+        exact: true
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['chat', chatId],
+        exact: true
+      });
+    }
   });
 }
 
@@ -345,11 +418,17 @@ export function useSearchUsers(query: string) {
       if (results.length === 0 && isSixDigitId) {
         console.log('Searching by 6-digit ID:', query);
         
+<<<<<<< HEAD
         const { data: sixDigitResults, error: sixDigitError } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', query)
           .neq('id', user.id); // Don't include current user
+=======
+        // Using the RPC function to search by user_id in metadata
+        const { data: metadataResults, error: metadataError } = await supabase
+          .rpc('search_users_by_id', { user_id: query });
+>>>>>>> 1e70aa6 (chatService: Fix chat message sending issue)
           
         if (sixDigitError) throw sixDigitError;
         
