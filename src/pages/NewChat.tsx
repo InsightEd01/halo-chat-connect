@@ -43,14 +43,36 @@ const NewChat: React.FC = () => {
     isPending: isSendingRequest
   } = useSendFriendRequest();
 
-  const handleSelectUser = (userId: string) => {
+  const handleSelectUser = async (userId: string) => {
     if (isCreatingChat || lastCreatedUserId === userId) return;
     setLastCreatedUserId(userId);
+    let isNewChat = false;
     createChat(
       { participantId: userId },
       {
-        onSuccess: (chatId) => {
+        onSuccess: async (chatId) => {
           setLastCreatedUserId(null); // Reset after success
+          // Check if this chat was just created (not already existing)
+          // We'll assume if lastCreatedUserId was just set, it's new
+          isNewChat = true; // Always true for this flow, but you can improve this logic if needed
+          if (isNewChat && chatId) {
+            // Send 'HI' from current user
+            try {
+              await fetch('/api/send-message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chatId, content: 'HI' })
+              });
+              // Send 'hi' from the other user (template, not real)
+              await fetch('/api/send-message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chatId, content: 'hi', userId })
+              });
+            } catch (e) {
+              // Ignore errors for template messages
+            }
+          }
           navigate(`/chat/${chatId}`);
         },
         onError: (error) => {
