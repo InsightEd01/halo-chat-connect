@@ -90,11 +90,20 @@ export function useUserChats() {
         // Get latest messages for each chat
         const { data: latestMessages, error: messagesError } = await supabase
           .from('messages')
-          .select('*, profiles!messages_user_id_fkey(*)')
+          .select('*')
           .in('chat_id', chatIds)
           .order('created_at', { ascending: false });
           
         if (messagesError) throw messagesError;
+        
+        // Get profiles for message senders
+        const messageUserIds = [...new Set(latestMessages?.map(m => m.user_id) || [])];
+        const { data: messageProfiles, error: messageProfilesError } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', messageUserIds);
+          
+        if (messageProfilesError) throw messageProfilesError;
         
         // Build the response
         return chats.map(chat => {
@@ -104,16 +113,17 @@ export function useUserChats() {
             .filter(Boolean) as Profile[];
             
           const lastMessage = latestMessages?.find(msg => msg.chat_id === chat.id);
+          const lastMessageWithUser = lastMessage ? {
+            ...lastMessage,
+            user: messageProfiles?.find(p => p.id === lastMessage.user_id)
+          } : undefined;
           
           return {
             id: chat.id,
             created_at: chat.created_at,
             updated_at: chat.updated_at,
             participants: participantProfiles,
-            lastMessage: lastMessage ? {
-              ...lastMessage,
-              user: lastMessage.profiles
-            } : undefined
+            lastMessage: lastMessageWithUser
           };
         });
       } catch (error) {
@@ -192,14 +202,16 @@ export function useChat(chatId: string | undefined) {
         ) || [];
         
         if (unreadMessages.length > 0) {
-          // Update message status without blocking
-          supabase
-            .from('messages')
-            .update({ status: 'read' })
-            .eq('chat_id', chatId)
-            .neq('user_id', user.id)
-            .neq('status', 'read')
-            .then(() => {
+          // Update message status without blocking - use async IIFE to handle the promise properly
+          (async () => {
+            try {
+              await supabase
+                .from('messages')
+                .update({ status: 'read' })
+                .eq('chat_id', chatId)
+                .neq('user_id', user.id)
+                .neq('status', 'read');
+              
               // Update local cache without triggering a refetch
               queryClient.setQueryData(['chat', chatId], (oldData: any) => {
                 if (!oldData) return oldData;
@@ -211,10 +223,10 @@ export function useChat(chatId: string | undefined) {
                   }))
                 };
               });
-            })
-            .catch(error => {
+            } catch (error) {
               console.error('Error marking messages as read:', error);
-            });
+            }
+          })();
         }
         
         return {
