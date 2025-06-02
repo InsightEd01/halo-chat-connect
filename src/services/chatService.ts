@@ -39,6 +39,28 @@ export interface Message {
   user?: Profile;
 }
 
+// Helper function to check if user is a participant in a chat
+async function checkUserParticipation(chatId: string, userId: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('participants')
+      .select('id')
+      .eq('chat_id', chatId)
+      .eq('user_id', userId)
+      .maybeSingle();
+      
+    if (error) {
+      console.error('Error checking participation:', error);
+      return false;
+    }
+    
+    return !!data;
+  } catch (error) {
+    console.error('Error in checkUserParticipation:', error);
+    return false;
+  }
+}
+
 // Fetch user chats
 export function useUserChats() {
   const { user } = useAuth();
@@ -49,16 +71,26 @@ export function useUserChats() {
       if (!user) throw new Error('No user');
       
       try {
+        console.log('Fetching chats for user:', user.id);
+        
         // First get chats where user is a participant
         const { data: userChats, error: chatsError } = await supabase
           .from('participants')
           .select('chat_id')
           .eq('user_id', user.id);
           
-        if (chatsError) throw chatsError;
-        if (!userChats || userChats.length === 0) return [];
+        if (chatsError) {
+          console.error('Error fetching user participants:', chatsError);
+          throw chatsError;
+        }
+        
+        if (!userChats || userChats.length === 0) {
+          console.log('No chats found for user');
+          return [];
+        }
         
         const chatIds = userChats.map(p => p.chat_id);
+        console.log('Found chat IDs:', chatIds);
         
         // Get chat details
         const { data: chats, error: chatDetailsError } = await supabase
@@ -67,8 +99,15 @@ export function useUserChats() {
           .in('id', chatIds)
           .order('updated_at', { ascending: false });
           
-        if (chatDetailsError) throw chatDetailsError;
-        if (!chats) return [];
+        if (chatDetailsError) {
+          console.error('Error fetching chat details:', chatDetailsError);
+          throw chatDetailsError;
+        }
+        
+        if (!chats || chats.length === 0) {
+          console.log('No chat details found');
+          return [];
+        }
         
         // Get all participants for these chats
         const { data: allParticipants, error: participantsError } = await supabase
@@ -76,7 +115,10 @@ export function useUserChats() {
           .select('chat_id, user_id')
           .in('chat_id', chatIds);
           
-        if (participantsError) throw participantsError;
+        if (participantsError) {
+          console.error('Error fetching participants:', participantsError);
+          throw participantsError;
+        }
         
         // Get profiles for all participants
         const allUserIds = [...new Set(allParticipants?.map(p => p.user_id) || [])];
@@ -85,7 +127,10 @@ export function useUserChats() {
           .select('*')
           .in('id', allUserIds);
           
-        if (profilesError) throw profilesError;
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+          throw profilesError;
+        }
         
         // Get latest messages for each chat
         const { data: latestMessages, error: messagesError } = await supabase
@@ -94,7 +139,10 @@ export function useUserChats() {
           .in('chat_id', chatIds)
           .order('created_at', { ascending: false });
           
-        if (messagesError) throw messagesError;
+        if (messagesError) {
+          console.error('Error fetching messages:', messagesError);
+          throw messagesError;
+        }
         
         // Get profiles for message senders
         const messageUserIds = [...new Set(latestMessages?.map(m => m.user_id) || [])];
@@ -103,10 +151,13 @@ export function useUserChats() {
           .select('*')
           .in('id', messageUserIds);
           
-        if (messageProfilesError) throw messageProfilesError;
+        if (messageProfilesError) {
+          console.error('Error fetching message profiles:', messageProfilesError);
+          throw messageProfilesError;
+        }
         
         // Build the response
-        return chats.map(chat => {
+        const result = chats.map(chat => {
           const chatParticipants = allParticipants?.filter(p => p.chat_id === chat.id) || [];
           const participantProfiles = chatParticipants
             .map(p => profiles?.find(profile => profile.id === p.user_id))
@@ -126,6 +177,9 @@ export function useUserChats() {
             lastMessage: lastMessageWithUser
           };
         });
+        
+        console.log('Successfully fetched chats:', result.length);
+        return result;
       } catch (error) {
         console.error('Error fetching chats:', error);
         throw error;
@@ -151,15 +205,31 @@ export function useChat(chatId: string | undefined) {
       if (!chatId || !user) throw new Error('No chat ID or user');
       
       try {
-        // Get chat details
+        console.log('Fetching chat:', chatId, 'for user:', user.id);
+        
+        // First check if user is a participant in this chat
+        const isParticipant = await checkUserParticipation(chatId, user.id);
+        if (!isParticipant) {
+          console.log('User is not a participant in chat:', chatId);
+          throw new Error('Access denied: You are not a participant in this chat');
+        }
+        
+        // Get chat details - use maybeSingle instead of single
         const { data: chat, error: chatError } = await supabase
           .from('chats')
           .select('*')
           .eq('id', chatId)
-          .single();
+          .maybeSingle();
           
-        if (chatError) throw chatError;
-        if (!chat) throw new Error('Chat not found');
+        if (chatError) {
+          console.error('Error fetching chat:', chatError);
+          throw chatError;
+        }
+        
+        if (!chat) {
+          console.log('Chat not found:', chatId);
+          throw new Error('Chat not found');
+        }
         
         // Get participants
         const { data: participants, error: participantsError } = await supabase
@@ -167,7 +237,10 @@ export function useChat(chatId: string | undefined) {
           .select('user_id')
           .eq('chat_id', chatId);
           
-        if (participantsError) throw participantsError;
+        if (participantsError) {
+          console.error('Error fetching participants:', participantsError);
+          throw participantsError;
+        }
         
         // Get participant profiles
         const userIds = participants?.map(p => p.user_id) || [];
@@ -176,7 +249,10 @@ export function useChat(chatId: string | undefined) {
           .select('*')
           .in('id', userIds);
           
-        if (profilesError) throw profilesError;
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+          throw profilesError;
+        }
         
         // Get messages
         const { data: messages, error: messagesError } = await supabase
@@ -185,7 +261,10 @@ export function useChat(chatId: string | undefined) {
           .eq('chat_id', chatId)
           .order('created_at', { ascending: true });
           
-        if (messagesError) throw messagesError;
+        if (messagesError) {
+          console.error('Error fetching messages:', messagesError);
+          throw messagesError;
+        }
         
         // Get message sender profiles
         const messageUserIds = [...new Set(messages?.map(m => m.user_id) || [])];
@@ -194,7 +273,10 @@ export function useChat(chatId: string | undefined) {
           .select('*')
           .in('id', messageUserIds);
           
-        if (messageProfilesError) throw messageProfilesError;
+        if (messageProfilesError) {
+          console.error('Error fetching message profiles:', messageProfilesError);
+          throw messageProfilesError;
+        }
         
         // Mark unread messages as read in the background
         const unreadMessages = messages?.filter(msg => 
@@ -229,7 +311,7 @@ export function useChat(chatId: string | undefined) {
           })();
         }
         
-        return {
+        const result = {
           id: chat.id,
           created_at: chat.created_at,
           updated_at: chat.updated_at,
@@ -239,6 +321,9 @@ export function useChat(chatId: string | undefined) {
             user: messageProfiles?.find(p => p.id === msg.user_id)
           }))
         };
+        
+        console.log('Successfully fetched chat with', result.messages.length, 'messages');
+        return result;
       } catch (error) {
         console.error('Error fetching chat:', error);
         throw error;
@@ -248,7 +333,7 @@ export function useChat(chatId: string | undefined) {
     staleTime: 1000 * 10,
     refetchInterval: 3000,
     retry: (failureCount, error) => {
-      return failureCount < 3 && !error.message?.includes('404');
+      return failureCount < 3 && !error.message?.includes('404') && !error.message?.includes('Access denied');
     }
   });
 }
@@ -268,6 +353,14 @@ export function useSendMessage() {
     }) => {
       if (!user) throw new Error('No user');
       
+      console.log('Sending message to chat:', chatId);
+      
+      // Check if user is a participant before sending
+      const isParticipant = await checkUserParticipation(chatId, user.id);
+      if (!isParticipant) {
+        throw new Error('Access denied: You are not a participant in this chat');
+      }
+      
       // Insert new message
       const { data, error } = await supabase
         .from('messages')
@@ -280,7 +373,10 @@ export function useSendMessage() {
         .select()
         .single();
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error sending message:', error);
+        throw error;
+      }
       
       // Update chat's updated_at timestamp
       await supabase
@@ -295,6 +391,7 @@ export function useSendMessage() {
         .eq('id', user.id)
         .single();
         
+      console.log('Message sent successfully');
       return {
         ...data,
         user: profile
@@ -345,6 +442,8 @@ export function useCreateChat() {
       if (!user) throw new Error('No user');
       
       try {
+        console.log('Creating chat between', user.id, 'and', participantId);
+        
         // First check if a chat already exists between these users
         const { data: existingParticipants, error: existingError } = await supabase
           .from('participants')
@@ -364,9 +463,10 @@ export function useCreateChat() {
               .select('chat_id')
               .eq('chat_id', participant.chat_id)
               .eq('user_id', participantId)
-              .single();
+              .maybeSingle(); // Use maybeSingle instead of single
               
             if (!participantError && otherParticipant) {
+              console.log('Chat already exists:', participant.chat_id);
               return participant.chat_id; // Chat already exists
             }
           }
@@ -403,6 +503,7 @@ export function useCreateChat() {
           throw participantsError;
         }
         
+        console.log('Chat created successfully:', chat.id);
         return chat.id;
       } catch (error) {
         console.error('Error creating chat:', error);

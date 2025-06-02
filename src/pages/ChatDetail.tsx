@@ -8,17 +8,20 @@ import ChatInput from '@/components/ChatInput';
 import { useChat, useSendMessage } from '@/services/chatService';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 const ChatDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { 
     data: chat, 
     isLoading, 
-    isError 
+    isError,
+    error
   } = useChat(id);
   
   const { 
@@ -31,13 +34,39 @@ const ChatDetail: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chat?.messages]);
 
+  // Show error toast when there's an error
+  useEffect(() => {
+    if (isError && error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load chat';
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
+      
+      // Redirect to chats if access is denied
+      if (errorMessage.includes('Access denied') || errorMessage.includes('not found')) {
+        setTimeout(() => navigate('/chats'), 2000);
+      }
+    }
+  }, [isError, error, toast, navigate]);
+
   // Get the other participant (not current user)
   const otherParticipant = chat?.participants.find(p => p.id !== user?.id);
 
   const handleSendMessage = (content: string) => {
     if (!id) return;
     
-    sendMessage({ chatId: id, content });
+    sendMessage({ chatId: id, content }, {
+      onError: (error) => {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: errorMessage,
+        });
+      }
+    });
   };
 
   const formatMessageTimestamp = (timestamp: string) => {
@@ -56,10 +85,31 @@ const ChatDetail: React.FC = () => {
     );
   }
 
-  if (isError || !chat || !otherParticipant) {
+  if (isError || !chat) {
+    const errorMessage = error instanceof Error ? error.message : 'Conversation not found';
     return (
-      <div className="wispa-container flex items-center justify-center">
-        <p>Conversation not found</p>
+      <div className="wispa-container flex flex-col items-center justify-center space-y-4">
+        <p className="text-red-600">{errorMessage}</p>
+        <Link 
+          to="/chats" 
+          className="px-4 py-2 bg-wispa-500 text-white rounded-md hover:bg-wispa-600"
+        >
+          Back to Chats
+        </Link>
+      </div>
+    );
+  }
+
+  if (!otherParticipant) {
+    return (
+      <div className="wispa-container flex flex-col items-center justify-center space-y-4">
+        <p className="text-red-600">Unable to find chat participant</p>
+        <Link 
+          to="/chats" 
+          className="px-4 py-2 bg-wispa-500 text-white rounded-md hover:bg-wispa-600"
+        >
+          Back to Chats
+        </Link>
       </div>
     );
   }
@@ -95,15 +145,21 @@ const ChatDetail: React.FC = () => {
       </header>
       
       <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-        {chat.messages.map(message => (
-          <ChatBubble
-            key={message.id}
-            content={message.content}
-            timestamp={formatMessageTimestamp(message.created_at)}
-            isOwnMessage={message.user_id === user?.id}
-            status={(message.status as 'sent' | 'delivered' | 'read') || 'sent'}
-          />
-        ))}
+        {chat.messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-gray-500">
+            <p>No messages yet. Start the conversation!</p>
+          </div>
+        ) : (
+          chat.messages.map(message => (
+            <ChatBubble
+              key={message.id}
+              content={message.content}
+              timestamp={formatMessageTimestamp(message.created_at)}
+              isOwnMessage={message.user_id === user?.id}
+              status={(message.status as 'sent' | 'delivered' | 'read') || 'sent'}
+            />
+          ))
+        )}
         <div ref={messagesEndRef} />
       </div>
       
