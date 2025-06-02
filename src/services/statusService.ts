@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,7 +14,7 @@ export function useStatusUpdates() {
     queryFn: async () => {
       if (!user) throw new Error('No user');
       
-      // Fixed the join syntax by using the foreign key name
+      // Fetch status updates without trying to join profiles
       const { data, error } = await supabase
         .from('status_updates')
         .select('*')
@@ -35,7 +36,7 @@ export function useStatusUpdates() {
           viewedBy = Object.values(status.viewed_by as Record<string, string>).map(id => String(id));
         }
 
-        // No user profile info available directly, just return user_id
+        // Return status without user profile info for now
         return {
           ...status,
           viewed_by: viewedBy,
@@ -111,7 +112,7 @@ export function useCreateStatus() {
         viewedBy = Object.values(data.viewed_by as Record<string, string>).map(id => String(id));
       }
       
-      // No user profile info available directly, just return user_id
+      // Return status without user profile info for now
       const processedData: StatusUpdate = {
         ...data,
         viewed_by: viewedBy,
