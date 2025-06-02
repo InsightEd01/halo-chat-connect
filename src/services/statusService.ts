@@ -173,7 +173,7 @@ export function useDeleteStatus() {
   });
 }
 
-// Mark a status as viewed
+// Mark a status as viewed - Fixed to handle duplicates gracefully
 export function useViewStatus() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -182,6 +182,22 @@ export function useViewStatus() {
     mutationFn: async ({ statusId }: { statusId: string }) => {
       if (!user) throw new Error('No user');
       
+      console.log('Attempting to mark status as viewed:', { statusId, userId: user.id });
+      
+      // First check if already viewed to prevent duplicate attempts
+      const { data: existingView } = await supabase
+        .from('status_views')
+        .select('id')
+        .eq('status_id', statusId)
+        .eq('viewer_id', user.id)
+        .maybeSingle();
+      
+      if (existingView) {
+        console.log('Status already viewed, skipping insert');
+        return existingView;
+      }
+      
+      // Insert new view record
       const { data, error } = await supabase
         .from('status_views')
         .insert({
@@ -189,12 +205,18 @@ export function useViewStatus() {
           viewer_id: user.id,
         })
         .select()
-        .single();
+        .maybeSingle();
         
-      // We're ok with error if it's a uniqueness violation (already viewed)
-      if (error && !error.message.includes('unique constraint')) {
+      if (error) {
+        // If it's a uniqueness violation, that's ok - just means already viewed
+        if (error.code === '23505' || error.message.includes('unique')) {
+          console.log('Status already viewed (uniqueness constraint)');
+          return { id: 'already-viewed' };
+        }
         throw error;
       }
+      
+      console.log('Successfully marked status as viewed');
       
       // Update local data
       queryClient.invalidateQueries({ queryKey: ['status-updates'] });

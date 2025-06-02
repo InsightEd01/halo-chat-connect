@@ -25,7 +25,7 @@ const Profile: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('username, avatar_url')
+          .select('username, avatar_url, user_id')
           .eq('id', user.id)
           .single();
 
@@ -34,21 +34,19 @@ const Profile: React.FC = () => {
         if (data) {
           setUsername(data.username || '');
           setAvatarUrl(data.avatar_url);
+          setUserId(data.user_id || '');
         }
 
-        // Get user metadata for ID
-        const { data: { user: userData } } = await supabase.auth.getUser();
-        if (userData?.user_metadata?.user_id) {
-          setUserId(userData.user_metadata.user_id);
-        } else {
-          // If no user ID exists, generate one
+        // If no user ID exists in profile, generate one
+        if (!data?.user_id) {
           const newId = Math.floor(100000 + Math.random() * 900000).toString();
           setUserId(newId);
           
-          // Save the new ID to user metadata
-          await supabase.auth.updateUser({
-            data: { user_id: newId }
-          });
+          // Save the new ID to the profile
+          await supabase
+            .from('profiles')
+            .update({ user_id: newId })
+            .eq('id', user.id);
         }
       } catch (error) {
         console.error('Error fetching profile:', error);
@@ -100,15 +98,46 @@ const Profile: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file || !user) return;
 
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Error',
+        description: 'Please select an image file',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: 'Error',
+        description: 'Image size must be less than 5MB',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const fileExt = file.name.split('.').pop();
-    const filePath = `avatars/${user.id}.${fileExt}`;
+    const filePath = `${user.id}/avatar.${fileExt}`;
 
     setUpdating(true);
     try {
-      // Upload image to storage
+      // Delete existing avatar if it exists
+      if (avatarUrl) {
+        const existingPath = avatarUrl.split('/').slice(-2).join('/');
+        await supabase.storage
+          .from('avatars')
+          .remove([existingPath]);
+      }
+
+      // Upload new image to storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, file, { 
+          upsert: true,
+          contentType: file.type
+        });
 
       if (uploadError) throw uploadError;
 
@@ -117,18 +146,20 @@ const Profile: React.FC = () => {
         .from('avatars')
         .getPublicUrl(filePath);
 
+      const newAvatarUrl = data.publicUrl;
+
       // Update profile with avatar URL
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ 
-          avatar_url: data.publicUrl,
+          avatar_url: newAvatarUrl,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
 
       if (updateError) throw updateError;
 
-      setAvatarUrl(data.publicUrl);
+      setAvatarUrl(newAvatarUrl);
       
       toast({
         title: 'Success',
@@ -179,7 +210,7 @@ const Profile: React.FC = () => {
                 <User className="h-12 w-12 text-gray-500" />
               </div>
             )}
-            <label htmlFor="avatar-upload" className="absolute bottom-0 right-0 bg-wispa-500 rounded-full p-2 cursor-pointer">
+            <label htmlFor="avatar-upload" className="absolute bottom-0 right-0 bg-wispa-500 rounded-full p-2 cursor-pointer hover:bg-wispa-600 transition-colors">
               <Camera className="h-4 w-4 text-white" />
               <input 
                 type="file" 
