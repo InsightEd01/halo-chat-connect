@@ -1,111 +1,69 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Camera, Trash2, Clock } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
-import NavBar from '@/components/NavBar';
-import Avatar from '@/components/Avatar';
-import EmptyState from '@/components/EmptyState';
-import { toast } from '@/components/ui/use-toast';
+
+import React, { useState } from 'react';
+import { Plus, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useStatusUpdates, useCreateStatus } from '@/services/statusService';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { format, formatDistanceToNow } from 'date-fns';
-import { StatusUpdate } from '@/types/status';
-import {
-  useStatusUpdates,
-  useCreateStatus,
-  useDeleteStatus,
-  useViewStatus
-} from '@/services/statusService';
+import StatusViewer from '@/components/StatusViewer';
+import FileUpload from '@/components/FileUpload';
+import MediaPreview from '@/components/MediaPreview';
+import Avatar from '@/components/Avatar';
+import NavBar from '@/components/NavBar';
+import { uploadFile } from '@/services/fileUploadService';
+import { toast } from '@/components/ui/use-toast';
+import { formatDistanceToNow } from 'date-fns';
 
 const Status: React.FC = () => {
   const { user } = useAuth();
-  const [myStatus, setMyStatus] = useState<StatusUpdate | null>(null);
-  const [otherStatuses, setOtherStatuses] = useState<StatusUpdate[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [statusContent, setStatusContent] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [showStatusForm, setShowStatusForm] = useState(false);
-
-  // Fetch all status updates using our custom hook
-  const { data: statusUpdates = [], isLoading, error } = useStatusUpdates();
-  const { mutate: createStatus } = useCreateStatus();
-  const { mutate: deleteStatus } = useDeleteStatus();
-  const { mutate: viewStatus } = useViewStatus();
+  const { data: statuses, isLoading } = useStatusUpdates();
+  const createStatusMutation = useCreateStatus();
   
-  // Process status updates into my status and other statuses
-  useEffect(() => {
-    if (statusUpdates.length > 0 && user) {
-      const myStatusData = statusUpdates.find(status => status.user_id === user.id) || null;
-      const otherStatusesData = statusUpdates.filter(status => status.user_id !== user.id);
-      
-      setMyStatus(myStatusData);
-      setOtherStatuses(otherStatusesData);
-    } else {
-      setMyStatus(null);
-      setOtherStatuses([]);
-    }
-  }, [statusUpdates, user]);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [statusContent, setStatusContent] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [selectedStatusId, setSelectedStatusId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    
-    const file = files[0];
-    // Check file type
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: 'Invalid file',
-        description: 'Please select an image file',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: 'File too large',
-        description: 'Image must be less than 5MB',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    setImageFile(file);
+  const handleFileSelect = (file: File) => {
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setFilePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setFilePreview(null);
   };
 
   const handleCreateStatus = async () => {
-    if (!user) return;
-    
-    if (!statusContent && !imageFile) {
-      toast({
-        title: 'No content',
-        description: 'Please add some text or an image to your status',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
+    if (!user || (!statusContent.trim() && !selectedFile)) return;
+
     setIsUploading(true);
-    
     try {
-      await createStatus({
-        content: statusContent,
-        mediaFile: imageFile || undefined
+      let mediaFile = selectedFile;
+
+      await createStatusMutation.mutateAsync({
+        content: statusContent.trim() || undefined,
+        mediaFile
       });
+
+      setStatusContent('');
+      setSelectedFile(null);
+      setFilePreview(null);
+      setShowCreateForm(false);
       
       toast({
-        title: 'Status updated',
-        description: 'Your status has been updated successfully',
+        title: 'Success',
+        description: 'Status created successfully',
       });
-      
-      setStatusContent('');
-      setImageFile(null);
-      setShowStatusForm(false);
-    } catch (error: any) {
-      console.error('Error creating status:', error.message);
+    } catch (error) {
+      console.error('Error creating status:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update status',
+        description: 'Failed to create status',
         variant: 'destructive',
       });
     } finally {
@@ -113,66 +71,18 @@ const Status: React.FC = () => {
     }
   };
 
-  const handleDeleteStatus = async (statusId: string) => {
-    try {
-      await deleteStatus(statusId);
-      
-      toast({
-        title: 'Status deleted',
-        description: 'Your status has been deleted successfully',
-      });
-    } catch (error: any) {
-      console.error('Error deleting status:', error.message);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete status',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleViewStatus = async (statusId: string) => {
-    if (!user) return;
-    
-    try {
-      await viewStatus({ statusId });
-    } catch (error: any) {
-      console.error('Error recording status view:', error.message);
-    }
-  };
-
-  const formatTimestamp = (timestamp: string) => {
-    try {
-      const date = new Date(timestamp);
-      
-      // If it's less than 24 hours ago, show relative time
-      const now = new Date();
-      const diffHours = Math.abs(now.getTime() - date.getTime()) / (1000 * 60 * 60);
-      
-      if (diffHours < 24) {
-        return formatDistanceToNow(date, { addSuffix: true });
-      }
-      
-      // Otherwise show the date
-      return format(date, 'MMM d, h:mm a');
-    } catch (e) {
-      return 'Unknown time';
-    }
+  const getMediaType = (url: string): 'image' | 'video' | 'audio' | 'document' => {
+    const extension = url.split('.').pop()?.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension || '')) return 'image';
+    if (['mp4', 'webm', 'mov'].includes(extension || '')) return 'video';
+    if (['mp3', 'wav', 'ogg'].includes(extension || '')) return 'audio';
+    return 'document';
   };
 
   if (isLoading) {
     return (
       <div className="wispa-container flex items-center justify-center">
-        <p>Loading status updates...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="wispa-container flex flex-col items-center justify-center">
-        <p className="text-red-500">Error loading status updates</p>
-        <p className="text-sm text-gray-500">{String(error)}</p>
+        <p>Loading statuses...</p>
       </div>
     );
   }
@@ -180,139 +90,158 @@ const Status: React.FC = () => {
   return (
     <div className="wispa-container">
       <header className="wispa-header">
-        <h1 className="text-2xl font-bold">Status</h1>
+        <div className="flex items-center justify-between">
+          <h2 className="font-medium">Status</h2>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm">
+              <Search className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowCreateForm(!showCreateForm)}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </header>
-      
+
       <div className="flex-1 overflow-y-auto">
-        {/* My Status section */}
-        <div className="px-4 py-3 border-b">
-          <h3 className="text-gray-500 text-sm mb-3">My Status</h3>
-          
-          {!showStatusForm ? (
-            <div className="flex items-center">
-              <div className="relative">
-                <Avatar
-                  src={user?.user_metadata?.avatar_url}
-                  size="lg"
-                  className={myStatus ? "border-2 border-wispa-500" : ""}
+        {/* Create Status Form */}
+        {showCreateForm && (
+          <div className="p-4 border-b bg-gray-50">
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <Avatar 
+                  src={user?.user_metadata?.avatar_url} 
+                  alt={user?.email || 'You'} 
+                  size="sm"
                 />
-                <button 
-                  className="absolute bottom-0 right-0 bg-wispa-500 text-white p-1.5 rounded-full"
-                  onClick={() => setShowStatusForm(true)}
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="ml-3">
-                <h3 className="font-medium">My Status</h3>
-                <p className="text-sm text-gray-500">
-                  {myStatus 
-                    ? `Last updated ${formatTimestamp(myStatus.created_at)}`
-                    : "Tap to add status update"}
-                </p>
-              </div>
-              
-              {myStatus && (
-                <button 
-                  onClick={() => handleDeleteStatus(myStatus.id)} 
-                  className="ml-auto text-red-500"
-                >
-                  <Trash2 className="h-5 w-5" />
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="bg-gray-50 rounded-lg p-4">
-              <textarea
-                value={statusContent}
-                onChange={(e) => setStatusContent(e.target.value)}
-                placeholder="What's on your mind?"
-                className="w-full p-2 border rounded mb-3 h-24 resize-none"
-              />
-              
-              {imageFile && (
-                <div className="relative w-full mb-3">
-                  <img
-                    src={URL.createObjectURL(imageFile)}
-                    alt="Status preview"
-                    className="w-full h-40 object-cover rounded"
+                <div className="flex-1">
+                  <Input
+                    placeholder="What's on your mind?"
+                    value={statusContent}
+                    onChange={(e) => setStatusContent(e.target.value)}
+                    className="border-none bg-transparent text-base resize-none"
                   />
-                  <button
-                    onClick={() => setImageFile(null)}
-                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
                 </div>
+              </div>
+
+              {filePreview && selectedFile && (
+                <MediaPreview
+                  src={filePreview}
+                  type={getMediaType(selectedFile.name)}
+                  name={selectedFile.name}
+                  onRemove={handleRemoveFile}
+                  className="max-h-64"
+                />
               )}
-              
+
               <div className="flex items-center justify-between">
-                <label className="flex items-center text-wispa-500 font-medium cursor-pointer">
-                  <Camera className="h-5 w-5 mr-1" />
-                  Add Photo
-                  <input 
-                    type="file" 
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageUpload}
-                    disabled={isUploading}
-                  />
-                </label>
-                
-                <div className="space-x-2">
-                  <button
-                    onClick={() => setShowStatusForm(false)}
-                    className="px-3 py-1.5 rounded border"
+                <FileUpload
+                  onFileSelect={handleFileSelect}
+                  bucketType="status"
+                  maxSize={10 * 1024 * 1024} // 10MB
+                  accept="image/*,video/*"
+                  className="flex-1 mr-4"
+                >
+                  <Button variant="outline" size="sm" className="w-full">
+                    Add Media
+                  </Button>
+                </FileUpload>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowCreateForm(false)}
                     disabled={isUploading}
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleCreateStatus}
-                    className="px-3 py-1.5 bg-wispa-500 text-white rounded"
-                    disabled={isUploading}
+                    disabled={(!statusContent.trim() && !selectedFile) || isUploading}
+                    className="bg-wispa-500 hover:bg-wispa-600"
                   >
-                    {isUploading ? 'Uploading...' : 'Post'}
-                  </button>
+                    {isUploading ? 'Posting...' : 'Post Status'}
+                  </Button>
                 </div>
               </div>
             </div>
-          )}
-        </div>
-        
-        {/* Recent updates */}
-        {otherStatuses.length > 0 ? (
-          <div>
-            <h3 className="text-gray-500 text-sm px-4 py-3">Recent Updates</h3>
-            {otherStatuses.map(status => (
-              <div 
+          </div>
+        )}
+
+        {/* Status List */}
+        <div className="p-4 space-y-4">
+          {statuses && statuses.length > 0 ? (
+            statuses.map((status) => (
+              <div
                 key={status.id}
-                className="px-4 py-3 border-b flex items-center hover:bg-gray-50"
-                onClick={() => handleViewStatus(status.id)}
+                className="bg-white rounded-lg border p-4 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => setSelectedStatusId(status.id)}
               >
-                <Avatar 
-                  src={status.user?.avatar_url || undefined} 
-                  alt={status.user?.username || 'User'} 
-                  className={`border-2 ${status.viewed_by?.includes(user?.id || '') ? 'border-gray-300' : 'border-wispa-500'}`}
-                />
-                <div className="ml-3">
-                  <h3 className="font-medium">{status.user?.username || 'User'}</h3>
-                  <div className="flex items-center text-sm text-gray-500">
-                    <Clock className="h-3.5 w-3.5 mr-1" />
-                    <span>{formatTimestamp(status.created_at)}</span>
+                <div className="flex items-start gap-3">
+                  <Avatar 
+                    src={status.user?.avatar_url} 
+                    alt={status.user?.username || 'User'} 
+                    size="sm"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-medium">
+                        {status.user?.username || 'Anonymous User'}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {formatDistanceToNow(new Date(status.created_at), { addSuffix: true })}
+                      </span>
+                    </div>
+
+                    {status.content && (
+                      <p className="text-gray-800 mb-3">{status.content}</p>
+                    )}
+
+                    {status.media_url && (
+                      <MediaPreview
+                        src={status.media_url}
+                        type={getMediaType(status.media_url)}
+                        showControls={false}
+                        className="max-h-64 mb-3"
+                      />
+                    )}
+
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <span>{status.viewed_by.length} views</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            title="No status updates"
-            description="When your contacts add status updates, you'll see them here"
-          />
-        )}
+            ))
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No status updates yet</p>
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateForm(true)}
+                className="mt-4"
+              >
+                Create your first status
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
-      
+
+      {/* Status Viewer */}
+      {selectedStatusId && (
+        <StatusViewer
+          isOpen={!!selectedStatusId}
+          onClose={() => setSelectedStatusId(null)}
+          initialStatusId={selectedStatusId}
+          statuses={statuses}
+        />
+      )}
+
       <NavBar />
     </div>
   );
