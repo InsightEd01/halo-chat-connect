@@ -1,9 +1,5 @@
-<<<<<<< HEAD
 
 import { supabase } from "@/integrations/supabase/client";
-=======
-import { supabase } from "@/integrations/supabase/client";                        
->>>>>>> 1e70aa6 (chatService: Fix chat message sending issue)
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -418,17 +414,11 @@ export function useSearchUsers(query: string) {
       if (results.length === 0 && isSixDigitId) {
         console.log('Searching by 6-digit ID:', query);
         
-<<<<<<< HEAD
         const { data: sixDigitResults, error: sixDigitError } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', query)
           .neq('id', user.id); // Don't include current user
-=======
-        // Using the RPC function to search by user_id in metadata
-        const { data: metadataResults, error: metadataError } = await supabase
-          .rpc('search_users_by_id', { user_id: query });
->>>>>>> 1e70aa6 (chatService: Fix chat message sending issue)
           
         if (sixDigitError) throw sixDigitError;
         
