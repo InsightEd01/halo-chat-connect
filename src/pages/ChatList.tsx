@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Search, MoreVertical, Settings, User, Archive } from 'lucide-react';
 import Avatar from '@/components/Avatar';
 import ChatListItem from '@/components/ChatListItem';
@@ -19,17 +19,16 @@ import {
 
 const ChatList: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { data: chats, isLoading } = useUserChats();
   const [showSettings, setShowSettings] = useState(false);
 
   const handleProfileSettings = () => {
-    // Navigate to profile page or open profile settings
-    console.log('Open profile settings');
+    navigate('/profile');
   };
 
   const handleArchivedChats = () => {
-    // Navigate to archived chats
-    console.log('Open archived chats');
+    navigate('/archived-chats');
   };
 
   if (isLoading) {
@@ -44,21 +43,21 @@ const ChatList: React.FC = () => {
     <div className="wispa-container">
       <header className="wispa-header">
         <div className="flex items-center">
-          <h1 className="text-2xl font-bold text-wispa-500">WispaChat</h1>
+          <h1 className="text-2xl font-bold text-white">WispaChat</h1>
         </div>
         
         <div className="flex items-center space-x-3">
-          <button className="p-2 rounded-full hover:bg-gray-100">
+          <button className="p-2 rounded-full hover:bg-blue-600 text-white">
             <Search className="h-5 w-5" />
           </button>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="p-2 rounded-full hover:bg-gray-100">
+              <button className="p-2 rounded-full hover:bg-blue-600 text-white">
                 <MoreVertical className="h-5 w-5" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-48 bg-white shadow-lg z-50">
               <DropdownMenuItem onClick={handleProfileSettings}>
                 <User className="h-4 w-4 mr-2" />
                 Profile Settings
@@ -102,7 +101,7 @@ const ChatList: React.FC = () => {
             title="No conversations yet"
             description="Start a new conversation to see your chats here"
             icon={<div className="h-12 w-12 bg-wispa-100 rounded-full flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF5722" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2v5Z"></path>
                 <path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"></path>
               </svg>

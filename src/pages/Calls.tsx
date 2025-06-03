@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Phone, Video, PhoneCall } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCallHistory, useInitiateCall } from '@/services/callService';
@@ -8,11 +8,13 @@ import { formatDistanceToNow } from 'date-fns';
 import NavBar from '@/components/NavBar';
 import Avatar from '@/components/Avatar';
 import EmptyState from '@/components/EmptyState';
+import CallInterface from '@/components/CallInterface';
 
 const Calls: React.FC = () => {
   const { user } = useAuth();
   const { data: calls, isLoading } = useCallHistory();
   const initiateMutation = useInitiateCall();
+  const [activeCall, setActiveCall] = useState<any>(null);
 
   const formatDuration = (seconds?: number) => {
     if (!seconds) return '';
@@ -40,15 +42,34 @@ const Calls: React.FC = () => {
 
   const handleCallBack = async (call: any) => {
     const receiverId = call.caller_id === user?.id ? call.receiver_id : call.caller_id;
+    
     try {
-      await initiateMutation.mutateAsync({
+      const newCall = await initiateMutation.mutateAsync({
         receiverId,
         callType: call.call_type
       });
+      
+      // Set the active call to show the call interface
+      setActiveCall(newCall);
     } catch (error) {
       console.error('Failed to initiate call:', error);
     }
   };
+
+  const handleCallEnd = () => {
+    setActiveCall(null);
+  };
+
+  // Show call interface if there's an active call
+  if (activeCall) {
+    return (
+      <CallInterface
+        call={activeCall}
+        isIncoming={false}
+        onCallEnd={handleCallEnd}
+      />
+    );
+  }
 
   if (isLoading) {
     return (
@@ -61,7 +82,7 @@ const Calls: React.FC = () => {
   return (
     <div className="wispa-container">
       <header className="wispa-header">
-        <h1 className="text-2xl font-bold">Calls</h1>
+        <h1 className="text-2xl font-bold text-white">Calls</h1>
       </header>
       
       <div className="flex-1 overflow-y-auto">
@@ -74,7 +95,7 @@ const Calls: React.FC = () => {
             return (
               <div 
                 key={call.id}
-                className="px-4 py-3 border-b flex items-center hover:bg-gray-50"
+                className="px-4 py-3 border-b flex items-center hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 <Avatar 
                   src={contact?.avatar_url} 
@@ -82,8 +103,8 @@ const Calls: React.FC = () => {
                 />
                 
                 <div className="flex-1 ml-3">
-                  <h3 className="font-medium">{contactName}</h3>
-                  <div className="flex items-center text-sm text-gray-500">
+                  <h3 className="font-medium dark:text-white">{contactName}</h3>
+                  <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                     <span className="mr-1">{getCallDirection(call)}</span>
                     {getCallIcon(call)}
                     <span className="ml-1">

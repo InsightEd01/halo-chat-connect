@@ -15,6 +15,7 @@ import Status from "./pages/Status";
 import NewChat from "./pages/NewChat";
 import Friends from "./pages/Friends";
 import Profile from "./pages/Profile";
+import ArchivedChats from "./pages/ArchivedChats";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/new-chat" element={<NewChat />} />
               <Route path="/friends" element={<Friends />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/archived-chats" element={<ArchivedChats />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />
