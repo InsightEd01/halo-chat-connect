@@ -194,8 +194,8 @@ const CallInterface: React.FC<CallInterfaceProps> = ({
           <Avatar 
             src={contact?.avatar_url} 
             alt={contact?.username || 'User'} 
-            size="xl"
-            className="mb-6"
+            size="lg"
+            className="mb-6 w-32 h-32"
           />
           
           <h2 className="text-2xl font-bold mb-2">

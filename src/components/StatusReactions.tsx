@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Heart, ThumbsUp, Laugh, Angry, Frown, Surprised } from 'lucide-react';
+import { Heart, ThumbsUp, Smile, Angry, CircleX, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useReactToStatus } from '@/services/statusService';
 import { toast } from '@/components/ui/use-toast';
@@ -15,9 +15,9 @@ interface StatusReactionsProps {
 const REACTION_EMOJIS = [
   { emoji: '❤️', icon: Heart, name: 'love' },
   { emoji: '👍', icon: ThumbsUp, name: 'like' },
-  { emoji: '😂', icon: Laugh, name: 'laugh' },
-  { emoji: '😮', icon: Surprised, name: 'wow' },
-  { emoji: '😢', icon: Frown, name: 'sad' },
+  { emoji: '😂', icon: Smile, name: 'laugh' },
+  { emoji: '😮', icon: MessageSquare, name: 'wow' },
+  { emoji: '😢', icon: CircleX, name: 'sad' },
   { emoji: '😡', icon: Angry, name: 'angry' },
 ];
 
