@@ -23,7 +23,7 @@ export function useStatusUpdates() {
         
       if (error) throw error;
 
-      // Transform data to ensure viewed_by is always a string array
+      // Transform data to ensure viewed_by and reactions are always arrays/objects
       const processedData = data?.map(status => {
         // Process viewed_by to ensure it's always a string array
         let viewedBy: string[] = [];
@@ -36,10 +36,18 @@ export function useStatusUpdates() {
           viewedBy = Object.values(status.viewed_by as Record<string, string>).map(id => String(id));
         }
 
+        // Process reactions to ensure it's always an object
+        let reactions: Record<string, string[]> = {};
+        
+        if (status.reactions && typeof status.reactions === 'object') {
+          reactions = status.reactions as Record<string, string[]>;
+        }
+
         // Return status without user profile info for now
         return {
           ...status,
           viewed_by: viewedBy,
+          reactions,
           user: {
             username: null,
             avatar_url: null
@@ -101,21 +109,11 @@ export function useCreateStatus() {
         
       if (error) throw error;
       
-      // Process viewed_by to ensure it's always a string array
-      let viewedBy: string[] = [];
-      
-      if (data.viewed_by === null) {
-        viewedBy = [];
-      } else if (Array.isArray(data.viewed_by)) {
-        viewedBy = data.viewed_by.map(id => String(id));
-      } else if (typeof data.viewed_by === 'object') {
-        viewedBy = Object.values(data.viewed_by as Record<string, string>).map(id => String(id));
-      }
-      
-      // Return status without user profile info for now
+      // Process data for consistency
       const processedData: StatusUpdate = {
         ...data,
-        viewed_by: viewedBy,
+        viewed_by: [],
+        reactions: {},
         user: {
           username: null,
           avatar_url: null
@@ -173,7 +171,7 @@ export function useDeleteStatus() {
   });
 }
 
-// Mark a status as viewed - Fixed to handle duplicates gracefully
+// Mark a status as viewed
 export function useViewStatus() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -217,6 +215,55 @@ export function useViewStatus() {
       }
       
       console.log('Successfully marked status as viewed');
+      
+      // Update local data
+      queryClient.invalidateQueries({ queryKey: ['status-updates'] });
+      
+      return data;
+    },
+  });
+}
+
+// React to a status
+export function useReactToStatus() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ statusId, emoji }: { statusId: string; emoji: string }) => {
+      if (!user) throw new Error('No user');
+      
+      console.log('Adding reaction to status:', { statusId, emoji, userId: user.id });
+      
+      // Insert reaction record
+      const { data, error } = await supabase
+        .from('status_reactions')
+        .insert({
+          status_id: statusId,
+          user_id: user.id,
+          emoji: emoji,
+        })
+        .select()
+        .maybeSingle();
+        
+      if (error) {
+        // If it's a uniqueness violation for same user/status, update the emoji
+        if (error.code === '23505') {
+          const { data: updateData, error: updateError } = await supabase
+            .from('status_reactions')
+            .update({ emoji })
+            .eq('status_id', statusId)
+            .eq('user_id', user.id)
+            .select()
+            .single();
+            
+          if (updateError) throw updateError;
+          return updateData;
+        }
+        throw error;
+      }
+      
+      console.log('Successfully added reaction to status');
       
       // Update local data
       queryClient.invalidateQueries({ queryKey: ['status-updates'] });

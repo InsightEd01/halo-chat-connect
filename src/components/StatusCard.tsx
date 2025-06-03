@@ -1,12 +1,14 @@
 
 import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Eye, Heart, MessageCircle, Share, MoreVertical } from 'lucide-react';
+import { Eye, MessageCircle, Share, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useViewStatus } from '@/services/statusService';
+import { useAuth } from '@/contexts/AuthContext';
 import { StatusUpdate } from '@/types/status';
 import MediaPreview from './MediaPreview';
 import Avatar from './Avatar';
+import StatusReactions from './StatusReactions';
 
 interface StatusCardProps {
   status: StatusUpdate;
@@ -23,15 +25,16 @@ const StatusCard: React.FC<StatusCardProps> = ({
   onPrevious,
   showNavigation = false
 }) => {
+  const { user } = useAuth();
   const [hasViewed, setHasViewed] = useState(false);
   const viewStatusMutation = useViewStatus();
 
   React.useEffect(() => {
-    if (!hasViewed) {
+    if (!hasViewed && user) {
       viewStatusMutation.mutate({ statusId: status.id });
       setHasViewed(true);
     }
-  }, [status.id, hasViewed]);
+  }, [status.id, hasViewed, user]);
 
   const getMediaType = (url: string): 'image' | 'video' | 'audio' | 'document' => {
     const extension = url.split('.').pop()?.toLowerCase();
@@ -104,7 +107,7 @@ const StatusCard: React.FC<StatusCardProps> = ({
 
       {/* Text overlay for media with text */}
       {status.media_url && status.content && (
-        <div className="absolute bottom-20 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+        <div className="absolute bottom-32 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
           <p className="text-white text-center">
             {status.content}
           </p>
@@ -123,13 +126,13 @@ const StatusCard: React.FC<StatusCardProps> = ({
             <span>{status.viewed_by.length}</span>
           </Button>
           
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white hover:bg-white/20"
-          >
-            <Heart className="h-4 w-4" />
-          </Button>
+          {user && (
+            <StatusReactions
+              statusId={status.id}
+              reactions={status.reactions || {}}
+              currentUserId={user.id}
+            />
+          )}
           
           <Button
             variant="ghost"

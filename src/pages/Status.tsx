@@ -10,7 +10,6 @@ import FileUpload from '@/components/FileUpload';
 import MediaPreview from '@/components/MediaPreview';
 import Avatar from '@/components/Avatar';
 import NavBar from '@/components/NavBar';
-import { uploadFile } from '@/services/fileUploadService';
 import { toast } from '@/components/ui/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -110,7 +109,7 @@ const Status: React.FC = () => {
       <div className="flex-1 overflow-y-auto">
         {/* Create Status Form */}
         {showCreateForm && (
-          <div className="p-4 border-b bg-gray-50">
+          <div className="p-4 border-b bg-white">
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <Avatar 
@@ -162,7 +161,7 @@ const Status: React.FC = () => {
                   <Button
                     onClick={handleCreateStatus}
                     disabled={(!statusContent.trim() && !selectedFile) || isUploading}
-                    className="bg-wispa-500 hover:bg-wispa-600"
+                    className="bg-blue-500 hover:bg-blue-600"
                   >
                     {isUploading ? 'Posting...' : 'Post Status'}
                   </Button>
@@ -212,6 +211,11 @@ const Status: React.FC = () => {
 
                     <div className="flex items-center gap-4 text-sm text-gray-500">
                       <span>{status.viewed_by.length} views</span>
+                      {status.reactions && Object.keys(status.reactions).length > 0 && (
+                        <span>
+                          {Object.values(status.reactions).reduce((total, users) => total + users.length, 0)} reactions
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
