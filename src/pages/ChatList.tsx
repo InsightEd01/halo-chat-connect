@@ -7,7 +7,7 @@ import ChatListItem from '@/components/ChatListItem';
 import EmptyState from '@/components/EmptyState';
 import NavBar from '@/components/NavBar';
 import SettingsDialog from '@/components/SettingsDialog';
-import { useChats } from '@/services/chatService';
+import { useUserChats } from '@/services/chatService';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
@@ -19,7 +19,7 @@ import {
 
 const ChatList: React.FC = () => {
   const { user } = useAuth();
-  const { data: chats, isLoading } = useChats();
+  const { data: chats, isLoading } = useUserChats();
   const [showSettings, setShowSettings] = useState(false);
 
   const handleProfileSettings = () => {
@@ -79,13 +79,24 @@ const ChatList: React.FC = () => {
       
       <div className="flex-1 overflow-y-auto">
         {chats && chats.length > 0 ? (
-          chats.map(chat => (
-            <ChatListItem
-              key={chat.id}
-              chat={chat}
-              currentUserId={user?.id}
-            />
-          ))
+          chats.map(chat => {
+            // Get the other participant (not the current user)
+            const otherParticipant = chat.participants.find(p => p.id !== user?.id);
+            
+            return (
+              <ChatListItem
+                key={chat.id}
+                id={chat.id}
+                name={otherParticipant?.username || 'Unknown User'}
+                avatar={otherParticipant?.avatar_url}
+                userId={otherParticipant?.user_id}
+                lastMessage={chat.lastMessage?.content}
+                timestamp={chat.lastMessage?.created_at ? new Date(chat.lastMessage.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined}
+                unreadCount={0}
+                status={null}
+              />
+            );
+          })
         ) : (
           <EmptyState
             title="No conversations yet"
