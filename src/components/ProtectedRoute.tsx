@@ -9,9 +9,11 @@ export default function ProtectedRoute() {
   // Show loading state while checking authentication
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 text-wispa-500 animate-spin" />
-        <span className="ml-2 text-wispa-500">Loading...</span>
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-8 w-8 text-wispa-500 animate-spin" />
+          <span className="text-wispa-500 text-sm">Loading...</span>
+        </div>
       </div>
     );
   }
