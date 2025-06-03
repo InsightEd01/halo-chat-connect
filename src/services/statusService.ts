@@ -26,20 +26,23 @@ export function useStatusUpdates() {
       const statusWithReactions = await Promise.all(
         (data || []).map(async (status) => {
           const { data: reactions } = await supabase
-            .from('status_reactions' as any)
+            .from('status_reactions')
             .select('emoji, user_id')
             .eq('status_id', status.id);
             
           const reactionMap: Record<string, string[]> = {};
-          reactions?.forEach(reaction => {
-            if (!reactionMap[reaction.emoji]) {
-              reactionMap[reaction.emoji] = [];
-            }
-            reactionMap[reaction.emoji].push(reaction.user_id);
-          });
+          if (reactions) {
+            reactions.forEach(reaction => {
+              if (!reactionMap[reaction.emoji]) {
+                reactionMap[reaction.emoji] = [];
+              }
+              reactionMap[reaction.emoji].push(reaction.user_id);
+            });
+          }
           
           return {
             ...status,
+            user: Array.isArray(status.user) ? status.user[0] : status.user,
             reactions: reactionMap
           };
         })
@@ -95,7 +98,7 @@ export function useViewStatus() {
       
       // Add to status_views table
       const { error: viewError } = await supabase
-        .from('status_views' as any)
+        .from('status_views')
         .insert({
           status_id: statusId,
           viewer_id: user.id
@@ -143,7 +146,7 @@ export function useReactToStatus() {
       
       // Check if user already reacted
       const { data: existingReaction } = await supabase
-        .from('status_reactions' as any)
+        .from('status_reactions')
         .select('*')
         .eq('status_id', statusId)
         .eq('user_id', user.id)
@@ -152,7 +155,7 @@ export function useReactToStatus() {
       if (existingReaction) {
         // Update existing reaction
         const { error } = await supabase
-          .from('status_reactions' as any)
+          .from('status_reactions')
           .update({ emoji })
           .eq('id', existingReaction.id);
           
@@ -160,7 +163,7 @@ export function useReactToStatus() {
       } else {
         // Create new reaction
         const { error } = await supabase
-          .from('status_reactions' as any)
+          .from('status_reactions')
           .insert({
             status_id: statusId,
             user_id: user.id,

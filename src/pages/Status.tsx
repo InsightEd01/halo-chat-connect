@@ -42,11 +42,15 @@ const Status: React.FC = () => {
 
     setIsUploading(true);
     try {
-      let mediaFile = selectedFile;
+      // Create a mock media URL for now since we don't have file upload service
+      let mediaUrl = undefined;
+      if (selectedFile) {
+        mediaUrl = URL.createObjectURL(selectedFile);
+      }
 
       await createStatusMutation.mutateAsync({
         content: statusContent.trim() || undefined,
-        mediaFile
+        mediaUrl
       });
 
       setStatusContent('');

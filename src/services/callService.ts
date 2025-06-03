@@ -31,25 +31,23 @@ export function useCallHistory() {
     queryFn: async () => {
       if (!user) throw new Error('No user');
       
-      // Use raw SQL query to get calls with profile data
-      const { data, error } = await supabase.rpc('get_user_calls', {
-        user_uuid: user.id
-      });
+      // Get calls with profile data using joins
+      const { data, error } = await supabase
+        .from('calls')
+        .select(`
+          *,
+          caller:profiles!calls_caller_id_fkey(username, avatar_url),
+          receiver:profiles!calls_receiver_id_fkey(username, avatar_url)
+        `)
+        .or(`caller_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order('started_at', { ascending: false });
         
       if (error) {
         console.error('Error fetching calls:', error);
-        // Fallback to basic query without joins if function doesn't exist
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('calls' as any)
-          .select('*')
-          .or(`caller_id.eq.${user.id},receiver_id.eq.${user.id}`)
-          .order('started_at', { ascending: false });
-          
-        if (fallbackError) throw fallbackError;
-        return fallbackData as Call[] || [];
+        throw error;
       }
       
-      return data as Call[] || [];
+      return (data || []) as Call[];
     },
     enabled: !!user,
   });
@@ -71,7 +69,7 @@ export function useInitiateCall() {
       if (!user) throw new Error('No user');
       
       const { data, error } = await supabase
-        .from('calls' as any)
+        .from('calls')
         .insert({
           caller_id: user.id,
           receiver_id: receiverId,
@@ -99,7 +97,7 @@ export function useAnswerCall() {
   return useMutation({
     mutationFn: async (callId: string) => {
       const { data, error } = await supabase
-        .from('calls' as any)
+        .from('calls')
         .update({ status: 'answered' })
         .eq('id', callId)
         .select('*')
@@ -131,7 +129,7 @@ export function useEndCall() {
       
       // Get call start time to calculate duration
       const { data: callData } = await supabase
-        .from('calls' as any)
+        .from('calls')
         .select('started_at')
         .eq('id', callId)
         .single();
@@ -144,7 +142,7 @@ export function useEndCall() {
       }
       
       const { data, error } = await supabase
-        .from('calls' as any)
+        .from('calls')
         .update({ 
           status, 
           ended_at: endTime,
@@ -174,7 +172,7 @@ export function useIncomingCalls() {
       if (!user) return [];
       
       const { data, error } = await supabase
-        .from('calls' as any)
+        .from('calls')
         .select('*')
         .eq('receiver_id', user.id)
         .eq('status', 'ringing')
@@ -185,7 +183,7 @@ export function useIncomingCalls() {
         return [];
       }
       
-      return data as Call[] || [];
+      return (data || []) as Call[];
     },
     enabled: !!user,
     refetchInterval: 5000, // Check for incoming calls every 5 seconds
