@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,6 +33,15 @@ export interface Participant {
   role?: 'admin' | 'member';
 }
 
+// Simplified interface for reply message previews
+export interface ReplyMessagePreview {
+  content: string;
+  type: 'text' | 'voice';
+  user?: {
+    username: string;
+  };
+}
+
 export interface Message {
   id: string;
   chat_id: string;
@@ -42,7 +52,7 @@ export interface Message {
   type?: 'text' | 'voice';
   media_url?: string;
   reply_to?: string; // ID of the message being replied to
-  reply_to_message?: Message; // The message being replied to
+  reply_to_message?: ReplyMessagePreview; // The message being replied to (preview only)
   reactions?: Array<{
     emoji: string;
     userId: string;
@@ -278,7 +288,7 @@ export function useChat(chatId: string | undefined) {
           throw profilesError;
         }
         
-        // Get messages with reactions and replies
+        // Get messages with reactions and properly structured reply data
         const { data: messages, error: messagesError } = await supabase
           .from('messages')
           .select(`
@@ -287,18 +297,6 @@ export function useChat(chatId: string | undefined) {
               user_id,
               emoji,
               created_at
-            ),
-            reply_to_message:messages!messages_reply_to_fkey (
-              id,
-              content,
-              type,
-              media_url,
-              user_id,
-              created_at,
-              user:profiles (
-                username,
-                avatar_url
-              )
             )
           `)
           .eq('chat_id', chatId)
@@ -307,6 +305,41 @@ export function useChat(chatId: string | undefined) {
         if (messagesError) {
           console.error('Error fetching messages:', messagesError);
           throw messagesError;
+        }
+        
+        // Get reply-to messages separately to avoid complex joins
+        const replyToIds = messages?.map(m => m.reply_to).filter(Boolean) || [];
+        let replyToMessages: any[] = [];
+        
+        if (replyToIds.length > 0) {
+          const { data: replyData, error: replyError } = await supabase
+            .from('messages')
+            .select(`
+              id,
+              content,
+              type,
+              user_id
+            `)
+            .in('id', replyToIds);
+            
+          if (!replyError && replyData) {
+            replyToMessages = replyData;
+          }
+        }
+        
+        // Get profiles for reply message users
+        const replyUserIds = [...new Set(replyToMessages.map(m => m.user_id))];
+        let replyProfiles: any[] = [];
+        
+        if (replyUserIds.length > 0) {
+          const { data: replyProfileData, error: replyProfileError } = await supabase
+            .from('profiles')
+            .select('id, username')
+            .in('id', replyUserIds);
+            
+          if (!replyProfileError && replyProfileData) {
+            replyProfiles = replyProfileData;
+          }
         }
         
         // Get message sender profiles
@@ -361,7 +394,18 @@ export function useChat(chatId: string | undefined) {
           participants: profiles || [],
           messages: (messages || []).map(msg => ({
             ...msg,
-            user: messageProfiles?.find(p => p.id === msg.user_id)
+            user: messageProfiles?.find(p => p.id === msg.user_id),
+            reply_to_message: msg.reply_to ? (() => {
+              const replyMsg = replyToMessages.find(r => r.id === msg.reply_to);
+              if (!replyMsg) return undefined;
+              
+              const replyUser = replyProfiles.find(p => p.id === replyMsg.user_id);
+              return {
+                content: replyMsg.content || '',
+                type: (replyMsg.type as 'text' | 'voice') || 'text',
+                user: replyUser ? { username: replyUser.username || '' } : undefined
+              };
+            })() : undefined
           }))
         };
         

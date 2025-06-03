@@ -6,14 +6,13 @@ import Avatar from '@/components/Avatar';
 import ChatBubble from '@/components/ChatBubble';
 import ChatInput from '@/components/ChatInput';
 import { ForwardMessageDialog } from '@/components/ForwardMessageDialog';
-import { useChat, useSendMessage, useAddReaction, useRemoveReaction, Message } from '@/services/chatService';
+import { useChat, useSendMessage, useAddReaction, useRemoveReaction, type Message } from '@/services/chatService';
 import { useTypingStatus } from '@/services/typingService';
 import { useMessageStatus } from '@/services/messageStatusService';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/services/notificationService';
-import type { Chat } from '@/services/chatService';
 
 const ChatDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -133,20 +132,22 @@ const ChatDetail: React.FC = () => {
     if (message) {
       // Convert the database message to the expected Message type
       const formattedMessage: Message = {
-        ...message,
+        id: message.id,
+        chat_id: message.chat_id,
+        user_id: message.user_id,
+        content: message.content,
+        created_at: message.created_at,
         status: (message.status as 'sent' | 'delivered' | 'read') || 'sent',
+        type: message.type as 'text' | 'voice',
+        media_url: message.media_url,
+        reply_to: message.reply_to,
         reactions: message.reactions?.map(r => ({
           emoji: r.emoji,
           userId: r.user_id,
           createdAt: r.created_at
         })) || [],
-        reply_to_message: message.reply_to_message ? {
-          content: message.reply_to_message.content || '',
-          type: (message.reply_to_message.type as 'text' | 'voice') || 'text',
-          user: message.reply_to_message.user ? {
-            username: message.reply_to_message.user.username || ''
-          } : undefined
-        } : undefined
+        reply_to_message: message.reply_to_message,
+        user: message.user
       };
       setReplyTo(formattedMessage);
     }
@@ -157,20 +158,22 @@ const ChatDetail: React.FC = () => {
     if (message) {
       // Convert the database message to the expected Message type
       const formattedMessage: Message = {
-        ...message,
+        id: message.id,
+        chat_id: message.chat_id,
+        user_id: message.user_id,
+        content: message.content,
+        created_at: message.created_at,
         status: (message.status as 'sent' | 'delivered' | 'read') || 'sent',
+        type: message.type as 'text' | 'voice',
+        media_url: message.media_url,
+        reply_to: message.reply_to,
         reactions: message.reactions?.map(r => ({
           emoji: r.emoji,
           userId: r.user_id,
           createdAt: r.created_at
         })) || [],
-        reply_to_message: message.reply_to_message ? {
-          content: message.reply_to_message.content || '',
-          type: (message.reply_to_message.type as 'text' | 'voice') || 'text',
-          user: message.reply_to_message.user ? {
-            username: message.reply_to_message.user.username || ''
-          } : undefined
-        } : undefined
+        reply_to_message: message.reply_to_message,
+        user: message.user
       };
       setForwardMessage(formattedMessage);
       setShowForwardDialog(true);
@@ -294,13 +297,7 @@ const ChatDetail: React.FC = () => {
                     createdAt: r.created_at
                   })) || []}
                   currentUserId={user?.id}
-                  reply_to_message={message.reply_to_message ? {
-                    content: message.reply_to_message.content || '',
-                    type: (message.reply_to_message.type as 'text' | 'voice') || 'text',
-                    user: message.reply_to_message.user ? {
-                      username: message.reply_to_message.user.username || ''
-                    } : undefined
-                  } : undefined}
+                  reply_to_message={message.reply_to_message}
                   onAddReaction={handleAddReaction}
                   onRemoveReaction={handleRemoveReaction}
                   onReply={handleReply}
