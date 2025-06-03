@@ -1,9 +1,9 @@
-
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Index from "./pages/Index";
@@ -22,6 +22,7 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+<<<<<<< HEAD
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -48,6 +49,36 @@ const App = () => (
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
+=======
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              
+              {/* Protected Routes */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/chats" element={<ChatList />} />
+                <Route path="/chat/:id" element={<ChatDetail />} />
+                <Route path="/calls" element={<Calls />} />
+                <Route path="/status" element={<Status />} />
+                <Route path="/new-chat" element={<NewChat />} />
+                <Route path="/friends" element={<Friends />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/archived-chats" element={<ArchivedChats />} />
+              </Route>
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
+>>>>>>> 1e03dc9 (feat: add SettingsDialog component for user preferences and account management)
   </QueryClientProvider>
 );
 
