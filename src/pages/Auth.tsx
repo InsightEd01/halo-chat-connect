@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Auth: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
@@ -16,6 +17,7 @@ const Auth: React.FC = () => {
   const [userId, setUserId] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   
   const { user, signIn, signUp } = useAuth();
 
@@ -57,11 +59,32 @@ const Auth: React.FC = () => {
     }
   };
 
-  const handleGoogleAuth = () => {
-    toast({
-      title: "Google Authentication",
-      description: "Google authentication is not implemented yet.",
-    });
+  const handleGoogleAuth = async () => {
+    setGoogleLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/chats`
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "Google Sign-in Error",
+          description: error.message,
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Google Sign-in Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   const togglePasswordVisibility = () => {
@@ -259,6 +282,7 @@ const Auth: React.FC = () => {
                 variant="outline" 
                 className="w-full" 
                 onClick={handleGoogleAuth}
+                disabled={googleLoading}
               >
                 <svg viewBox="0 0 24 24" width="16" height="16" className="mr-2">
                   <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
@@ -268,16 +292,10 @@ const Auth: React.FC = () => {
                     <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/>
                   </g>
                 </svg>
-                Continue with Google
+                {googleLoading ? 'Connecting...' : 'Continue with Google'}
               </Button>
             </div>
           </div>
-        </div>
-
-        <div className="p-4 text-center text-sm text-gray-500 border-t">
-          <Link to="/chats" className="text-wispa-600 hover:text-wispa-700">
-            Skip authentication for now
-          </Link>
         </div>
       </div>
     </div>

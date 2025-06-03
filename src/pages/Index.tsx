@@ -25,12 +25,6 @@ const Index = () => {
               Get Started
             </Button>
           </Link>
-          
-          <Link to="/chats">
-            <Button variant="outline" className="w-full">
-              Continue as Guest
-            </Button>
-          </Link>
         </div>
         
         <p className="mt-6 text-sm text-gray-500">

@@ -25,10 +25,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        
+        // Handle OAuth sign-ins by creating profile if needed
+        if (session?.user && !session.user.email_confirmed_at) {
+          // For OAuth providers, the email is already confirmed
+          if (session.user.app_metadata.provider === 'google') {
+            await createProfileIfNeeded(session.user);
+          }
+        } else if (session?.user) {
+          await createProfileIfNeeded(session.user);
+        }
       }
     );
 
@@ -42,31 +52,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const createProfileIfNeeded = async (user: User) => {
+    try {
+      // Check if profile already exists
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (!existingProfile) {
+        // Generate user_id for new profile
+        const userId = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Create profile
+        const { error } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            username: user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+            user_id: userId,
+            avatar_url: user.user_metadata?.avatar_url || null
+          });
+
+        if (error) {
+          console.error('Error creating profile:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking/creating profile:', error);
+    }
+  };
+
   const signUp = async (email: string, password: string, username: string, userId?: string) => {
     try {
       // Generate user ID if not provided
       const user_id = userId || Math.floor(100000 + Math.random() * 900000).toString();
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             username,
             user_id
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/chats`
         }
       });
 
       if (error) throw error;
       
-      toast({
-        title: "Account created successfully",
-        description: "You can now sign in with your new account",
-      });
-
-      // Redirect to sign in - since we may need to confirm email
-      navigate('/auth');
+      // Since email confirmations are disabled, we can redirect immediately
+      if (data.user && !data.session) {
+        toast({
+          title: "Account created successfully",
+          description: "You can now sign in with your new account",
+        });
+      } else if (data.session) {
+        toast({
+          title: "Account created successfully",
+          description: `Your Wispa user ID: ${user_id}`,
+        });
+        navigate('/chats');
+      }
     } catch (error: any) {
       toast({
         title: "Error creating account",
