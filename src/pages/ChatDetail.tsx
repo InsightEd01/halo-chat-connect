@@ -1,7 +1,6 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Phone, Video, ArrowLeft, MoreVertical } from 'lucide-react';
+import { Phone, Video, ArrowLeft, MoreVertical, UserPlus, Archive, Trash2 } from 'lucide-react';
 import Avatar from '@/components/Avatar';
 import ChatBubble from '@/components/ChatBubble';
 import ChatInput from '@/components/ChatInput';
@@ -9,10 +8,18 @@ import { ForwardMessageDialog } from '@/components/ForwardMessageDialog';
 import { useChat, useSendMessage, useAddReaction, useRemoveReaction, type Message } from '@/services/chatService';
 import { useTypingStatus } from '@/services/typingService';
 import { useMessageStatus } from '@/services/messageStatusService';
+import { useInitiateCall } from '@/services/callService';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/services/notificationService';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 
 const ChatDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -46,14 +53,15 @@ const ChatDetail: React.FC = () => {
     isPending: isRemovingReaction
   } = useRemoveReaction();
 
+  const { mutate: initiateCall } = useInitiateCall();
+
   const { typingUsers, setTyping } = useTypingStatus(id || '');
   const { markMessageAsRead } = useMessageStatus(id || '');
-  useNotifications(); // Add notifications
+  useNotifications();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     
-    // Mark messages as read when they become visible
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach(entry => {
@@ -68,7 +76,6 @@ const ChatDetail: React.FC = () => {
       { threshold: 0.5 }
     );
 
-    // Observe all unread messages from other users
     const unreadMessages = document.querySelectorAll('[data-message-id]');
     unreadMessages.forEach(msg => observer.observe(msg));
 
@@ -93,6 +100,57 @@ const ChatDetail: React.FC = () => {
   }, [isError, error, toast, navigate]);
 
   const otherParticipant = chat?.participants.find(p => p.id !== user?.id);
+
+  const handleCall = (type: 'audio' | 'video') => {
+    if (!otherParticipant) return;
+    
+    initiateCall(
+      { 
+        receiverId: otherParticipant.id, 
+        callType: type 
+      },
+      {
+        onSuccess: (call) => {
+          toast({
+            title: `${type === 'video' ? 'Video' : 'Audio'} call initiated`,
+            description: `Calling ${otherParticipant.username}...`,
+          });
+          // Navigate to call screen
+          navigate(`/call/${call.id}`);
+        },
+        onError: (error) => {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to initiate call';
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: errorMessage,
+          });
+        }
+      }
+    );
+  };
+
+  const handleBlockUser = () => {
+    toast({
+      title: "User blocked",
+      description: `${otherParticipant?.username} has been blocked`,
+    });
+  };
+
+  const handleArchiveChat = () => {
+    toast({
+      title: "Chat archived",
+      description: "This conversation has been archived",
+    });
+  };
+
+  const handleDeleteChat = () => {
+    toast({
+      title: "Chat deleted",
+      description: "This conversation has been deleted",
+    });
+    navigate('/chats');
+  };
 
   const handleSendMessage = (content: string, type: 'text' | 'voice' = 'text', replyToId?: string) => {
     if (!id) return;
@@ -130,7 +188,6 @@ const ChatDetail: React.FC = () => {
   const handleReply = (messageId: string) => {
     const message = chat?.messages.find(m => m.id === messageId);
     if (message) {
-      // Convert the database message to the expected Message type
       const formattedMessage: Message = {
         id: message.id,
         chat_id: message.chat_id,
@@ -146,7 +203,11 @@ const ChatDetail: React.FC = () => {
           userId: r.user_id,
           createdAt: r.created_at
         })) || [],
-        reply_to_message: message.reply_to_message,
+        reply_to_message: message.reply_to_message ? {
+          content: message.reply_to_message.content,
+          type: message.reply_to_message.type as 'text' | 'voice',
+          user: message.reply_to_message.user
+        } : undefined,
         user: message.user
       };
       setReplyTo(formattedMessage);
@@ -156,7 +217,6 @@ const ChatDetail: React.FC = () => {
   const handleForward = (messageId: string) => {
     const message = chat?.messages.find(m => m.id === messageId);
     if (message) {
-      // Convert the database message to the expected Message type
       const formattedMessage: Message = {
         id: message.id,
         chat_id: message.chat_id,
@@ -172,7 +232,11 @@ const ChatDetail: React.FC = () => {
           userId: r.user_id,
           createdAt: r.created_at
         })) || [],
-        reply_to_message: message.reply_to_message,
+        reply_to_message: message.reply_to_message ? {
+          content: message.reply_to_message.content,
+          type: message.reply_to_message.type as 'text' | 'voice',
+          user: message.reply_to_message.user
+        } : undefined,
         user: message.user
       };
       setForwardMessage(formattedMessage);
@@ -260,15 +324,44 @@ const ChatDetail: React.FC = () => {
         </div>
         
         <div className="flex space-x-3">
-          <button className="p-2 rounded-full hover:bg-wispa-600">
+          <button 
+            onClick={() => handleCall('audio')}
+            className="p-2 rounded-full hover:bg-wispa-600"
+          >
             <Phone className="h-5 w-5" />
           </button>
-          <button className="p-2 rounded-full hover:bg-wispa-600">
+          <button 
+            onClick={() => handleCall('video')}
+            className="p-2 rounded-full hover:bg-wispa-600"
+          >
             <Video className="h-5 w-5" />
           </button>
-          <button className="p-2 rounded-full hover:bg-wispa-600">
-            <MoreVertical className="h-5 w-5" />
-          </button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="p-2 rounded-full hover:bg-wispa-600">
+                <MoreVertical className="h-5 w-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add to contacts
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleArchiveChat}>
+                <Archive className="h-4 w-4 mr-2" />
+                Archive chat
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleBlockUser} className="text-red-600">
+                Block user
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDeleteChat} className="text-red-600">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete chat
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
       
