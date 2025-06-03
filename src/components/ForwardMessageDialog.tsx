@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useUserChats } from '@/services/chatService';
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,7 +58,7 @@ export function ForwardMessageDialog({ message, onClose, onForward }: ForwardMes
                     onClick={() => onForward(chat.id)}
                     className="w-full flex items-center space-x-3 p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   >
-                    <Avatar url={otherParticipant.avatar_url} />
+                    <Avatar src={otherParticipant.avatar_url} />
                     <div className="flex-1 text-left">
                       <p className="font-medium">{otherParticipant.username}</p>
                       {chat.lastMessage && (

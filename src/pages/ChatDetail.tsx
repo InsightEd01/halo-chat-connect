@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Phone, Video, ArrowLeft, MoreVertical } from 'lucide-react';
@@ -130,14 +131,48 @@ const ChatDetail: React.FC = () => {
   const handleReply = (messageId: string) => {
     const message = chat?.messages.find(m => m.id === messageId);
     if (message) {
-      setReplyTo(message);
+      // Convert the database message to the expected Message type
+      const formattedMessage: Message = {
+        ...message,
+        status: (message.status as 'sent' | 'delivered' | 'read') || 'sent',
+        reactions: message.reactions?.map(r => ({
+          emoji: r.emoji,
+          userId: r.user_id,
+          createdAt: r.created_at
+        })) || [],
+        reply_to_message: message.reply_to_message ? {
+          content: message.reply_to_message.content || '',
+          type: (message.reply_to_message.type as 'text' | 'voice') || 'text',
+          user: message.reply_to_message.user ? {
+            username: message.reply_to_message.user.username || ''
+          } : undefined
+        } : undefined
+      };
+      setReplyTo(formattedMessage);
     }
   };
 
   const handleForward = (messageId: string) => {
     const message = chat?.messages.find(m => m.id === messageId);
     if (message) {
-      setForwardMessage(message);
+      // Convert the database message to the expected Message type
+      const formattedMessage: Message = {
+        ...message,
+        status: (message.status as 'sent' | 'delivered' | 'read') || 'sent',
+        reactions: message.reactions?.map(r => ({
+          emoji: r.emoji,
+          userId: r.user_id,
+          createdAt: r.created_at
+        })) || [],
+        reply_to_message: message.reply_to_message ? {
+          content: message.reply_to_message.content || '',
+          type: (message.reply_to_message.type as 'text' | 'voice') || 'text',
+          user: message.reply_to_message.user ? {
+            username: message.reply_to_message.user.username || ''
+          } : undefined
+        } : undefined
+      };
+      setForwardMessage(formattedMessage);
       setShowForwardDialog(true);
     }
   };
@@ -253,9 +288,19 @@ const ChatDetail: React.FC = () => {
                   isOwnMessage={message.user_id === user?.id}
                   status={(message.status as 'sent' | 'delivered' | 'read') || 'sent'}
                   type={message.type as 'text' | 'voice'}
-                  reactions={message.reactions || []}
+                  reactions={message.reactions?.map(r => ({
+                    emoji: r.emoji,
+                    userId: r.user_id,
+                    createdAt: r.created_at
+                  })) || []}
                   currentUserId={user?.id}
-                  reply_to_message={message.reply_to_message}
+                  reply_to_message={message.reply_to_message ? {
+                    content: message.reply_to_message.content || '',
+                    type: (message.reply_to_message.type as 'text' | 'voice') || 'text',
+                    user: message.reply_to_message.user ? {
+                      username: message.reply_to_message.user.username || ''
+                    } : undefined
+                  } : undefined}
                   onAddReaction={handleAddReaction}
                   onRemoveReaction={handleRemoveReaction}
                   onReply={handleReply}
