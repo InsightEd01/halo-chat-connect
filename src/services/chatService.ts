@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +14,9 @@ export interface Chat {
   id: string;
   created_at: string;
   updated_at: string;
+  is_group: boolean;
+  name?: string;
+  avatar_url?: string;
 }
 
 export interface ChatWithParticipants extends Chat {
@@ -27,6 +29,7 @@ export interface Participant {
   chat_id: string;
   user_id: string;
   created_at: string;
+  role?: 'admin' | 'member';
 }
 
 export interface Message {
@@ -36,7 +39,28 @@ export interface Message {
   content: string;
   created_at: string;
   status: 'sent' | 'delivered' | 'read';
+  type?: 'text' | 'voice';
+  media_url?: string;
+  reply_to?: string; // ID of the message being replied to
+  reply_to_message?: Message; // The message being replied to
+  reactions?: Array<{
+    emoji: string;
+    userId: string;
+    createdAt: string;
+  }>;
   user?: Profile;
+}
+
+export interface MessageReaction {
+  user_id: string;
+  emoji: string;
+  created_at: string;
+}
+
+export interface TypingStatus {
+  user_id: string;
+  chat_id: string;
+  timestamp: number;
 }
 
 // Helper function to check if user is a participant in a chat
@@ -254,10 +278,29 @@ export function useChat(chatId: string | undefined) {
           throw profilesError;
         }
         
-        // Get messages
+        // Get messages with reactions and replies
         const { data: messages, error: messagesError } = await supabase
           .from('messages')
-          .select('*')
+          .select(`
+            *,
+            reactions:message_reactions (
+              user_id,
+              emoji,
+              created_at
+            ),
+            reply_to_message:messages!messages_reply_to_fkey (
+              id,
+              content,
+              type,
+              media_url,
+              user_id,
+              created_at,
+              user:profiles (
+                username,
+                avatar_url
+              )
+            )
+          `)
           .eq('chat_id', chatId)
           .order('created_at', { ascending: true });
           
@@ -284,7 +327,7 @@ export function useChat(chatId: string | undefined) {
         ) || [];
         
         if (unreadMessages.length > 0) {
-          // Update message status without blocking - use async IIFE to handle the promise properly
+          // Update message status without blocking - use async IFFE to handle the promise properly
           (async () => {
             try {
               await supabase
@@ -346,29 +389,68 @@ export function useSendMessage() {
   return useMutation({
     mutationFn: async ({ 
       chatId, 
-      content 
+      content,
+      type = 'text',
+      replyTo
     }: { 
       chatId: string; 
-      content: string 
+      content: string;
+      type?: 'text' | 'voice';
+      replyTo?: string;
     }) => {
       if (!user) throw new Error('No user');
       
-      console.log('Sending message to chat:', chatId);
+      console.log('Sending message to chat:', chatId, 'type:', type);
       
       // Check if user is a participant before sending
       const isParticipant = await checkUserParticipation(chatId, user.id);
       if (!isParticipant) {
         throw new Error('Access denied: You are not a participant in this chat');
       }
+
+      let finalContent = content;
+      let mediaUrl = null;
+
+      // If it's a voice message, upload it to storage
+      if (type === 'voice') {
+        try {
+          // Convert base64 to blob
+          const base64Data = content.split(',')[1];
+          const audioBlob = await fetch(`data:audio/webm;base64,${base64Data}`).then(r => r.blob());
+          
+          // Upload to Supabase storage
+          const fileName = `voice-${Date.now()}.webm`;
+          const { data: uploadData, error: uploadError } = await supabase
+            .storage
+            .from('voice-messages')
+            .upload(fileName, audioBlob);
+
+          if (uploadError) throw uploadError;
+
+          // Get public URL
+          const { data: { publicUrl } } = supabase
+            .storage
+            .from('voice-messages')
+            .getPublicUrl(fileName);
+
+          mediaUrl = publicUrl;
+          finalContent = 'Voice message'; // Fallback text
+        } catch (error) {
+          console.error('Error uploading voice message:', error);
+          throw error;
+        }
+      }
       
       // Insert new message
       const { data, error } = await supabase
-        .from('messages')
-        .insert({
+        .from('messages')          .insert({
           chat_id: chatId,
           user_id: user.id,
-          content,
-          status: 'sent'
+          content: finalContent,
+          type,
+          media_url: mediaUrl,
+          status: 'sent',
+          reply_to: replyTo
         })
         .select()
         .single();
@@ -398,7 +480,7 @@ export function useSendMessage() {
       };
     },
     onSuccess: (data, variables) => {
-      // Update the chat query data instead of invalidating
+      // Update the chat query data
       queryClient.setQueriesData(
         { queryKey: ['chat', variables.chatId] },
         (oldData: any) => {
@@ -410,7 +492,7 @@ export function useSendMessage() {
           };
         }
       );
-      
+
       // Update the chats list query data
       queryClient.setQueriesData(
         { queryKey: ['chats'] },
@@ -593,5 +675,68 @@ export function useSearchUsers(query: string) {
     enabled: !!user && !!query && query.trim() !== '',
     staleTime: 1000 * 60,
     refetchOnWindowFocus: false,
+  });
+}
+
+// Add reactions
+export function useAddReaction() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ messageId, emoji }: { messageId: string; emoji: string }) => {
+      if (!user) throw new Error('No user');
+      
+      const { data, error } = await supabase
+        .from('message_reactions')
+        .insert({
+          message_id: messageId,
+          user_id: user.id,
+          emoji
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding reaction:', error);
+        throw error;
+      }
+
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ['chat'] });
+    }
+  });
+}
+
+// Remove reactions
+export function useRemoveReaction() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ messageId, emoji }: { messageId: string; emoji: string }) => {
+      if (!user) throw new Error('No user');
+      
+      const { error } = await supabase
+        .from('message_reactions')
+        .delete()
+        .match({
+          message_id: messageId,
+          user_id: user.id,
+          emoji
+        });
+
+      if (error) {
+        console.error('Error removing reaction:', error);
+        throw error;
+      }
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ['chat'] });
+    }
   });
 }
