@@ -65,18 +65,27 @@ export type Database = {
       }
       chats: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
           id: string
+          is_group: boolean | null
+          name: string | null
           updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
           id?: string
+          is_group?: boolean | null
+          name?: string | null
           updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
           id?: string
+          is_group?: boolean | null
+          name?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -159,30 +168,89 @@ export type Database = {
           },
         ]
       }
+      message_reactions: {
+        Row: {
+          created_at: string | null
+          emoji: string
+          id: string
+          message_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          emoji: string
+          id?: string
+          message_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          emoji?: string
+          id?: string
+          message_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           chat_id: string
           content: string
           created_at: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          file_name: string | null
+          file_size: number | null
+          forwarded_from: string | null
           id: string
+          media_url: string | null
+          reply_to: string | null
           status: string | null
+          type: string | null
           user_id: string
+          voice_duration: number | null
         }
         Insert: {
           chat_id: string
           content: string
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          forwarded_from?: string | null
           id?: string
+          media_url?: string | null
+          reply_to?: string | null
           status?: string | null
+          type?: string | null
           user_id: string
+          voice_duration?: number | null
         }
         Update: {
           chat_id?: string
           content?: string
           created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          forwarded_from?: string | null
           id?: string
+          media_url?: string | null
+          reply_to?: string | null
           status?: string | null
+          type?: string | null
           user_id?: string
+          voice_duration?: number | null
         }
         Relationships: [
           {
@@ -192,6 +260,20 @@ export type Database = {
             referencedRelation: "chats"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "messages_forwarded_from_fkey"
+            columns: ["forwarded_from"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_reply_to_fkey"
+            columns: ["reply_to"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
         ]
       }
       participants: {
@@ -199,18 +281,21 @@ export type Database = {
           chat_id: string
           created_at: string | null
           id: string
+          role: string | null
           user_id: string
         }
         Insert: {
           chat_id: string
           created_at?: string | null
           id?: string
+          role?: string | null
           user_id: string
         }
         Update: {
           chat_id?: string
           created_at?: string | null
           id?: string
+          role?: string | null
           user_id?: string
         }
         Relationships: [
@@ -341,6 +426,41 @@ export type Database = {
             columns: ["status_id"]
             isOneToOne: false
             referencedRelation: "status_updates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      typing_status: {
+        Row: {
+          chat_id: string | null
+          created_at: string | null
+          id: string
+          timestamp: number
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          chat_id?: string | null
+          created_at?: string | null
+          id?: string
+          timestamp: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          chat_id?: string | null
+          created_at?: string | null
+          id?: string
+          timestamp?: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "typing_status_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "chats"
             referencedColumns: ["id"]
           },
         ]

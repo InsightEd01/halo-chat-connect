@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,15 +18,6 @@ export function useAddReaction() {
     }) => {
       if (!user) throw new Error('No user');
 
-      // Get the chat_id for the message
-      const { data: message, error: messageError } = await supabase
-        .from('messages')
-        .select('chat_id')
-        .eq('id', messageId)
-        .single();
-
-      if (messageError) throw messageError;
-
       const { data, error } = await supabase
         .from('message_reactions')
         .insert({
@@ -33,7 +25,7 @@ export function useAddReaction() {
           user_id: user.id,
           emoji
         })
-        .select('*, user:profiles(*)')
+        .select()
         .single();
 
       if (error) {
@@ -54,7 +46,39 @@ export function useAddReaction() {
 
       return data;
     },
-    onSuccess: (data, variables) => {
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['chat']
+      });
+    },
+  });
+}
+
+// Remove reaction from a message
+export function useRemoveReaction() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      messageId, 
+      emoji 
+    }: { 
+      messageId: string; 
+      emoji: string;
+    }) => {
+      if (!user) throw new Error('No user');
+
+      const { error } = await supabase
+        .from('message_reactions')
+        .delete()
+        .eq('message_id', messageId)
+        .eq('user_id', user.id)
+        .eq('emoji', emoji);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ 
         queryKey: ['chat']
       });
@@ -124,7 +148,7 @@ export function useDeleteMessage() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ 
         queryKey: ['chat']
       });
@@ -189,7 +213,7 @@ export function useForwardMessage() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ 
         queryKey: ['chat']
       });

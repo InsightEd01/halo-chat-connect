@@ -77,7 +77,7 @@ export function useInitiateCall() {
           status: 'ringing',
           started_at: new Date().toISOString(),
         })
-        .select('*')
+        .select()
         .single();
         
       if (error) throw error;
@@ -100,7 +100,7 @@ export function useAnswerCall() {
         .from('calls')
         .update({ status: 'answered' })
         .eq('id', callId)
-        .select('*')
+        .select()
         .single();
         
       if (error) throw error;
@@ -149,7 +149,7 @@ export function useEndCall() {
           ...(duration && { duration })
         })
         .eq('id', callId)
-        .select('*')
+        .select()
         .single();
         
       if (error) throw error;
@@ -173,7 +173,10 @@ export function useIncomingCalls() {
       
       const { data, error } = await supabase
         .from('calls')
-        .select('*')
+        .select(`
+          *,
+          caller:profiles!calls_caller_id_fkey(username, avatar_url)
+        `)
         .eq('receiver_id', user.id)
         .eq('status', 'ringing')
         .order('started_at', { ascending: false });
