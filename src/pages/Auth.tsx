@@ -35,6 +35,7 @@ const Auth: React.FC = () => {
 
   // Redirect if already logged in
   if (user) {
+    console.log('Auth page - User already logged in, redirecting to chats');
     return <Navigate to="/chats" replace />;
   }
 
@@ -44,12 +45,10 @@ const Auth: React.FC = () => {
 
     try {
       if (activeTab === "signup") {
+        console.log('Auth page - Starting signup process');
         await signUp(email, password, username, userId);
-        toast({
-          title: "Account created",
-          description: `Your Wispa user ID: ${userId}`,
-        });
       } else {
+        console.log('Auth page - Starting signin process');
         await signIn(email, password);
       }
     } catch (error) {
@@ -62,6 +61,7 @@ const Auth: React.FC = () => {
   const handleGoogleAuth = async () => {
     setGoogleLoading(true);
     try {
+      console.log('Auth page - Starting Google OAuth');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -70,6 +70,7 @@ const Auth: React.FC = () => {
       });
 
       if (error) {
+        console.error('Google auth error:', error);
         toast({
           title: "Google Sign-in Error",
           description: error.message,
@@ -77,6 +78,7 @@ const Auth: React.FC = () => {
         });
       }
     } catch (error: any) {
+      console.error('Google auth error:', error);
       toast({
         title: "Google Sign-in Error",
         description: error.message,

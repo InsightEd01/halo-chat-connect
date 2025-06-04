@@ -22,90 +22,132 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Separate function to handle profile creation without blocking auth flow
-  const handleProfileCreation = async (user: User) => {
+  // Handle profile creation/update after authentication
+  const handleProfileCreation = async (user: User, username?: string, userId?: string) => {
     try {
+      console.log('Handling profile creation for user:', user.id);
+      
       // Check if profile already exists
-      const { data: existingProfile } = await supabase
+      const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, user_id, username')
         .eq('id', user.id)
         .single();
 
-      if (!existingProfile) {
-        // Generate user_id for new profile
-        const userId = Math.floor(100000 + Math.random() * 900000).toString();
-        
-        // Create profile
-        const { error } = await supabase
-          .from('profiles')
-          .insert({
-            id: user.id,
-            username: user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-            user_id: userId,
-            avatar_url: user.user_metadata?.avatar_url || null
-          });
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error checking existing profile:', fetchError);
+        return;
+      }
 
-        if (error) {
-          console.error('Error creating profile:', error);
-          // Don't throw error - profile creation failure shouldn't block auth
+      if (!existingProfile) {
+        console.log('Creating new profile for user:', user.id);
+        
+        // Prepare profile data
+        const profileData: any = {
+          id: user.id,
+          username: username || user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          avatar_url: user.user_metadata?.avatar_url || null
+        };
+
+        // Add user_id if provided (for manual signup)
+        if (userId) {
+          profileData.user_id = userId;
         }
+        // For OAuth users, let the trigger generate the user_id
+
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert(profileData);
+
+        if (insertError) {
+          console.error('Error creating profile:', insertError);
+          toast({
+            title: "Profile Error",
+            description: "There was an issue creating your profile, but you can still use the app.",
+            variant: "destructive"
+          });
+        } else {
+          console.log('Profile created successfully');
+        }
+      } else {
+        console.log('Profile already exists for user:', user.id);
       }
     } catch (error) {
-      console.error('Error checking/creating profile:', error);
-      // Don't throw error - profile creation failure shouldn't block auth
+      console.error('Error in handleProfileCreation:', error);
     }
   };
 
   useEffect(() => {
-    // Set up auth state listener first
+    let mounted = true;
+
+    // Get initial session
+    const getInitialSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+        }
+        
+        if (mounted) {
+          console.log('Initial session check:', session?.user?.id);
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          // Handle profile creation for existing session
+          if (session?.user) {
+            setTimeout(() => {
+              handleProfileCreation(session.user);
+            }, 100);
+          }
+          
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error in getInitialSession:', error);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    getInitialSession();
+
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         console.log('Auth state change:', event, session?.user?.id);
         
-        // Update state synchronously
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-        
-        // Handle profile creation asynchronously without blocking
-        if (session?.user) {
-          // Use setTimeout to defer profile creation and prevent blocking
-          setTimeout(() => {
-            handleProfileCreation(session.user);
-          }, 0);
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          // Handle profile creation for new sessions
+          if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+            setTimeout(() => {
+              handleProfileCreation(session.user);
+            }, 100);
+          }
+          
+          // Only set loading to false after we've processed the auth change
+          if (event === 'SIGNED_OUT' || session) {
+            setLoading(false);
+          }
         }
       }
     );
 
-    // Check for existing session after setting up listener
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Error getting session:', error);
-      }
-      
-      console.log('Initial session check:', session?.user?.id);
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      
-      // Handle profile creation for existing session
-      if (session?.user) {
-        setTimeout(() => {
-          handleProfileCreation(session.user);
-        }, 0);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, username: string, userId?: string) => {
     try {
       setLoading(true);
       
-      // Generate user ID if not provided
-      const user_id = userId || Math.floor(100000 + Math.random() * 900000).toString();
+      console.log('Starting signup process for:', email);
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -113,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           data: {
             username,
-            user_id
+            user_id: userId
           },
           emailRedirectTo: `${window.location.origin}/chats`
         }
@@ -122,15 +164,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
       
       if (data.session) {
+        // User is immediately signed in (email confirmation disabled)
+        console.log('User signed up and logged in immediately');
+        await handleProfileCreation(data.user, username, userId);
+        
         toast({
           title: "Account created successfully",
-          description: `Your Wispa user ID: ${user_id}`,
+          description: `Welcome to WispaChat! Your user ID: ${userId}`,
         });
         navigate('/chats');
       } else if (data.user) {
+        // Email confirmation required
+        console.log('User signed up, email confirmation required');
         toast({
-          title: "Account created successfully",
-          description: "You can now sign in with your new account",
+          title: "Account created successfully", 
+          description: "Please check your email to confirm your account before signing in.",
         });
       }
     } catch (error: any) {
@@ -149,14 +197,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('Starting signin process for:', email);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
       
-      // Navigation will be handled by auth state change
+      console.log('User signed in successfully');
+      
+      // Navigation will be handled by auth state change listener
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully signed in.",
+      });
+      
     } catch (error: any) {
       console.error('Signin error:', error);
       toast({
@@ -173,6 +230,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      console.log('User signed out successfully');
       navigate('/auth');
     } catch (error: any) {
       console.error('Signout error:', error);

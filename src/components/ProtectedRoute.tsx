@@ -6,6 +6,8 @@ import { Loader2 } from 'lucide-react';
 export default function ProtectedRoute() {
   const { user, loading } = useAuth();
   
+  console.log('ProtectedRoute - user:', user?.id, 'loading:', loading);
+  
   // Show loading state while checking authentication
   if (loading) {
     return (
@@ -20,9 +22,11 @@ export default function ProtectedRoute() {
   
   // Redirect to auth if not authenticated
   if (!user) {
+    console.log('ProtectedRoute - No user, redirecting to auth');
     return <Navigate to="/auth" replace />;
   }
   
   // Allow access to protected routes
+  console.log('ProtectedRoute - User authenticated, allowing access');
   return <Outlet />;
 }
