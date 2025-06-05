@@ -32,11 +32,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('profiles')
         .select('id, user_id, username')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (fetchError && fetchError.code !== 'PGRST116') {
+      if (fetchError) {
         console.error('Error checking existing profile:', fetchError);
-        return;
+        // Continue anyway, don't block the auth process
       }
 
       if (!existingProfile) {
@@ -53,7 +53,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (userId) {
           profileData.user_id = userId;
         }
-        // For OAuth users, let the trigger generate the user_id
 
         const { error: insertError } = await supabase
           .from('profiles')
@@ -61,11 +60,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (insertError) {
           console.error('Error creating profile:', insertError);
-          toast({
-            title: "Profile Error",
-            description: "There was an issue creating your profile, but you can still use the app.",
-            variant: "destructive"
-          });
+          // Don't show error toast for profile creation failures, just log it
+          console.warn('Profile creation failed, but user authentication succeeded');
         } else {
           console.log('Profile created successfully');
         }
@@ -74,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Error in handleProfileCreation:', error);
+      // Don't block authentication if profile creation fails
     }
   };
 
@@ -90,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         if (mounted) {
-          console.log('Initial session check:', session?.user?.id);
+          console.log('Initial session check:', session?.user?.id || 'No session');
           setSession(session);
           setUser(session?.user ?? null);
           
@@ -116,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.id);
+        console.log('Auth state change:', event, session?.user?.id || 'No session');
         
         if (mounted) {
           setSession(session);
@@ -156,8 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: {
             username,
             user_id: userId
-          },
-          emailRedirectTo: `${window.location.origin}/chats`
+          }
         }
       });
 
@@ -183,11 +179,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error: any) {
       console.error('Signup error:', error);
-      toast({
-        title: "Error creating account",
-        description: error.message,
-        variant: "destructive"
-      });
+      
+      // Handle specific database errors
+      if (error.message?.includes('Database error')) {
+        toast({
+          title: "Database Error",
+          description: "There was an issue creating your account. Please try again or contact support.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Error creating account",
+          description: error.message,
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }
