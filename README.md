@@ -1,18 +1,21 @@
-# Welcome to your Lovable project
+# WispaChat
 
-## Project info
+WispaChat is a modern, feature-rich chat application that enables seamless communication through text, voice, and video calls. With a focus on user experience and performance, WispaChat provides a robust platform for both personal and professional communication.
 
-**URL**: https://lovable.dev/projects/4c695204-d43f-4dac-ae03-70f71d6a506e
+## Features
 
-## How can I edit this code?
+- 💬 Real-time text messaging
+- 📞 Voice and video calls
+- 📱 Responsive design for mobile and desktop
+- 🎨 Modern UI with shadcn-ui components
+- 📁 File sharing and media preview
+- 👥 Group chat support
+- 🔔 Push notifications
+- 📊 Message status tracking
+- 🔒 Secure authentication
+- ⚡ Built with performance in mind
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/4c695204-d43f-4dac-ae03-70f71d6a506e) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
+## Getting Started
 
 **Use your preferred IDE**
 
@@ -50,24 +53,53 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
-## What technologies are used for this project?
+## Tech Stack
 
-This project is built with:
+WispaChat is built with modern technologies for optimal performance and developer experience:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- ⚡ **Vite** - Next Generation Frontend Tooling
+- 🔷 **TypeScript** - For type-safe code
+- ⚛️ **React** - UI Framework
+- 🎨 **shadcn/ui** - High-quality UI components
+- 🌈 **Tailwind CSS** - Utility-first CSS framework
+- 🔌 **Supabase** - Backend and real-time features
+- 🚀 **WebRTC** - For voice and video calls
+- 📦 **Bun** - Fast package manager and runtime
 
-## How can I deploy this project?
+## Environment Setup
 
-Simply open [Lovable](https://lovable.dev/projects/4c695204-d43f-4dac-ae03-70f71d6a506e) and click on Share -> Publish.
+```bash
+# Install dependencies
+bun install
 
-## Can I connect a custom domain to my Lovable project?
+# Start development server
+bun run dev
 
-Yes, you can!
+# Build for production
+bun run build
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+# Preview production build
+bun run preview
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## Project Structure
+
+- `/src` - Application source code
+  - `/components` - Reusable UI components
+  - `/contexts` - React context providers
+  - `/hooks` - Custom React hooks
+  - `/pages` - Application pages/routes
+  - `/services` - API and service integrations
+  - `/types` - TypeScript type definitions
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License.

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Session, User } from '@supabase/supabase-js';
@@ -36,12 +35,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (fetchError) {
         console.error('Error checking existing profile:', fetchError);
+<<<<<<< HEAD
         // Continue anyway, don't block the auth process
+=======
+        throw new Error('Failed to check existing profile');
+>>>>>>> 6f70b98 (feat: enhance AuthProvider with improved profile creation and error handling)
       }
 
       if (!existingProfile) {
         console.log('Creating new profile for user:', user.id);
         
+<<<<<<< HEAD
         // Prepare profile data
         const profileData: any = {
           id: user.id,
@@ -71,6 +75,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error in handleProfileCreation:', error);
       // Don't block authentication if profile creation fails
+=======
+        // Generate a random 6-digit ID if not provided
+        const actualUserId = userId || Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Prepare profile data
+        const profileData = {
+          id: user.id,
+          user_id: actualUserId,
+          username: username || user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          avatar_url: user.user_metadata?.avatar_url || null,
+          updated_at: new Date().toISOString()
+        };
+
+        console.log('Creating profile with data:', profileData);
+
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert([profileData])
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('Error creating profile:', insertError);
+          throw new Error('Failed to create user profile');
+        }
+        
+        console.log('Profile created successfully');
+        return true;
+      }
+      
+      console.log('Profile already exists for user:', user.id);
+      return false;
+    } catch (error: any) {
+      console.error('Error in handleProfileCreation:', error);
+      throw error; // Re-throw to handle in the signup flow
+>>>>>>> 6f70b98 (feat: enhance AuthProvider with improved profile creation and error handling)
     }
   };
 
@@ -146,6 +186,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       console.log('Starting signup process for:', email);
       
+      // First validate the input
+      if (!email || !password || !username) {
+        throw new Error('Email, password and username are required');
+      }
+
+      // Sign up the user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -159,9 +205,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error;
       
+      if (!data.user) {
+        throw new Error('User creation failed');
+      }
+
       if (data.session) {
         // User is immediately signed in (email confirmation disabled)
         console.log('User signed up and logged in immediately');
+<<<<<<< HEAD
         await handleProfileCreation(data.user, username, userId);
         
         toast({
@@ -174,12 +225,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('User signed up, email confirmation required');
         toast({
           title: "Account created successfully", 
+=======
+        
+        try {
+          await handleProfileCreation(data.user, username, userId);
+          
+          toast({
+            title: "Account created successfully",
+            description: `Welcome to WispaChat! Your user ID: ${userId}`,
+          });
+          
+          navigate('/chats');
+        } catch (profileError: any) {
+          // If profile creation fails, sign out the user and show error
+          await supabase.auth.signOut();
+          throw new Error('Failed to create user profile. Please try again.');
+        }
+      } else {
+        // Email confirmation required
+        console.log('User signed up, email confirmation required');
+        
+        // Still try to create the profile
+        try {
+          await handleProfileCreation(data.user, username, userId);
+        } catch (profileError) {
+          console.error('Profile creation failed during email verification flow:', profileError);
+          // Don't block the signup process in this case
+        }
+        
+        toast({
+          title: "Account created successfully",
+>>>>>>> 6f70b98 (feat: enhance AuthProvider with improved profile creation and error handling)
           description: "Please check your email to confirm your account before signing in.",
         });
       }
     } catch (error: any) {
       console.error('Signup error:', error);
       
+<<<<<<< HEAD
       // Handle specific database errors
       if (error.message?.includes('Database error')) {
         toast({
@@ -194,6 +277,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           variant: "destructive"
         });
       }
+=======
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      
+      if (error.message?.includes('password')) {
+        errorMessage = error.message;
+      } else if (error.message?.includes('email')) {
+        errorMessage = 'Invalid email address or email already registered';
+      } else if (error.message?.includes('profile')) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        title: "Error creating account",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      
+      throw error;
+>>>>>>> 6f70b98 (feat: enhance AuthProvider with improved profile creation and error handling)
     } finally {
       setLoading(false);
     }
