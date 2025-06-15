@@ -21,7 +21,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
   children
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
-  const { toast } = useToast();
 
   const validateFile = (file: File): boolean => {
     if (file.size > maxSize) {

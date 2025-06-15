@@ -18,7 +18,7 @@ import Friends from "./pages/Friends";
 import Profile from "./pages/Profile";
 import ArchivedChats from "./pages/ArchivedChats";
 import NotFound from "./pages/NotFound";
-import CallInterface from "./components/CallInterface"; // Import the call screen component
+import CallPage from "./pages/CallPage"; // Import the new call page component
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,7 +46,7 @@ const App = () => (
                 <Route path="/chats" element={<ChatList />} />
                 <Route path="/chat/:id" element={<ChatDetail />} />
                 <Route path="/calls" element={<Calls />} />
-                <Route path="/call/:id" element={<CallInterface />} /> {/* Add call screen route */}
+                <Route path="/call/:id" element={<CallPage />} /> {/* Use CallPage */}
                 <Route path="/status" element={<Status />} />
                 <Route path="/new-chat" element={<NewChat />} />
                 <Route path="/friends" element={<Friends />} />
