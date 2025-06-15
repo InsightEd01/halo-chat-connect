@@ -60,7 +60,14 @@ const ChatDetail: React.FC = () => {
   const { markMessageAsRead } = useMessageStatus(id || '');
   useNotifications();
 
-  const { presence, isOnline } = usePresence(otherParticipant ? [otherParticipant.id] : []);
+  // Use an array with the other participant id if present, otherwise an empty array
+  const { presence, isOnline } = usePresence(
+    chat && user
+      ? chat.participants.filter(p => p.id !== user.id).map(p => p.id)
+      : []
+  );
+
+  const otherParticipant = chat?.participants.find(p => p.id !== user?.id);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -101,8 +108,6 @@ const ChatDetail: React.FC = () => {
       }
     }
   }, [isError, error, toast, navigate]);
-
-  const otherParticipant = chat?.participants.find(p => p.id !== user?.id);
 
   const handleCall = (type: 'audio' | 'video') => {
     if (!otherParticipant) return;
