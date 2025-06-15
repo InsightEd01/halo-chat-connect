@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Camera, User } from 'lucide-react';
@@ -8,6 +7,7 @@ import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import NavBar from '@/components/NavBar';
+import { uploadFile, deleteFile } from '@/services/fileUploadService';
 
 const Profile: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -118,37 +118,28 @@ const Profile: React.FC = () => {
       return;
     }
 
-    const fileExt = file.name.split('.').pop();
-    const filePath = `${user.id}/avatar.${fileExt}`;
-
     setUpdating(true);
     try {
       // Delete existing avatar if it exists
       if (avatarUrl) {
-        const existingPath = avatarUrl.split('/').slice(-2).join('/');
-        await supabase.storage
-          .from('avatars')
-          .remove([existingPath]);
+        try {
+          const oldPath = new URL(avatarUrl).pathname.split('/public/avatars/')[1];
+          if (oldPath) {
+            await deleteFile('avatars', oldPath);
+          }
+        } catch (e) {
+          console.error("Could not parse or delete old avatar, proceeding with upload.", e);
+        }
       }
 
-      // Upload new image to storage
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { 
-          upsert: true,
-          contentType: file.type
-        });
+      // Upload new image to storage using the service
+      const { url: newAvatarUrl } = await uploadFile({
+        bucket: 'avatars',
+        file,
+        userId: user.id
+      });
 
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      const newAvatarUrl = data.publicUrl;
-
-      // Update profile with avatar URL
+      // Update profile with new avatar URL
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ 
