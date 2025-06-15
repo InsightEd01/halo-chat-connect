@@ -225,9 +225,6 @@ export function useUserChats() {
       if (error) console.error('[userChats] Retrying after error:', error);
       return failureCount < 3 && (!error?.message || !error?.message.includes('404'));
     },
-    onError: (error) => {
-      console.error('[userChats] Query failed:', error);
-    }
   });
 }
 
@@ -425,9 +422,6 @@ export function useChat(chatId: string | undefined) {
       if (error) console.error('[useChat] Retrying after error:', error);
       return failureCount < 3 && (!error?.message?.includes('404') && !error?.message?.includes('Access denied'));
     },
-    onError: (error) => {
-      console.error('[useChat] Query failed:', error);
-    }
   });
 }
 
@@ -735,9 +729,6 @@ export function useSearchUsers(query: string) {
     enabled: !!user && !!query && query.trim() !== '',
     staleTime: 1000 * 60,
     refetchOnWindowFocus: false,
-    onError: (error) => {
-      console.error('[useSearchUsers] Query failed:', error);
-    }
   });
 }
 
