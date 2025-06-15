@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { PlusCircle, Upload, X } from "lucide-react";
@@ -42,8 +41,11 @@ const StatusPage: React.FC = () => {
           {
             id: myStatus?.id || "my-status",
             user: {
-              username: user.email || "Me",
-              avatar_url: user.avatar_url || null,
+              username:
+                user.user_metadata?.username ||
+                user.email ||
+                "Me",
+              avatar_url: user.user_metadata?.avatar_url || null,
             },
             isOwn: true,
           },
