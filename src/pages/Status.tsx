@@ -1,36 +1,49 @@
 
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Upload, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useStatusUpdates } from "@/services/statusService";
+import { useStatusUpdates, useCreateStatus } from "@/services/statusService";
 import StatusStoryBar from "@/components/StatusStoryBar";
 import StatusViewer from "@/components/StatusViewer";
 import { Button } from "@/components/ui/button";
+import FileUpload from "@/components/FileUpload";
+import MediaPreview from "@/components/MediaPreview";
+import { uploadFile } from "@/services/fileUploadService";
+import { useToast } from "@/hooks/use-toast";
 
 const StatusPage: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
+  // For status creation UI
+  const [statusText, setStatusText] = useState("");
+  const [statusFile, setStatusFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const createStatus = useCreateStatus();
+
+  // For status viewing
   const [viewerOpen, setViewerOpen] = useState(false);
   const [activeStatusId, setActiveStatusId] = useState<string | undefined>();
 
   // Fetch all status updates
   const { data: statuses = [], isLoading } = useStatusUpdates();
 
-  // Own status
-  const myStatus = statuses.find((s) => s.user_id === user?.id);
-  const otherStatuses = statuses.filter((s) => s.user_id !== user?.id);
+  // Own status: use user_id to find
+  const myStatus = user ? statuses.find((s) => s.user_id === user.id) : undefined;
+  const otherStatuses = user ? statuses.filter((s) => s.user_id !== user.id) : statuses;
 
   // Build list for the story bar ("my status" first, then others)
   const storyBarData = [
-    ...(user && profile
+    ...(user
       ? [
           {
             id: myStatus?.id || "my-status",
             user: {
-              username: profile.username || user.email || "Me",
-              avatar_url: profile.avatar_url || null,
+              username: user.email || "Me",
+              avatar_url: user.avatar_url || null,
             },
             isOwn: true,
           },
@@ -49,16 +62,52 @@ const StatusPage: React.FC = () => {
   // Open viewer (modal)
   const handleStoryBarSelect = useCallback(
     (statusId: string) => {
-      // For "my status" but no story, go to add
+      // For "my status" but no story, go to add (scrolls to create form)
       if (statusId === "my-status" && !myStatus) {
-        navigate("/status/add");
+        document.getElementById("status-create-form")?.scrollIntoView({ behavior: "smooth" });
       } else {
         setActiveStatusId(statusId);
         setViewerOpen(true);
       }
     },
-    [navigate, myStatus]
+    [myStatus]
   );
+
+  // Handle file picking
+  const handleFileSelect = (file: File) => {
+    setStatusFile(file);
+  };
+
+  // Remove picked file
+  const handleRemoveFile = () => {
+    setStatusFile(null);
+  };
+
+  // Submit status (Post)
+  const handlePostStatus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if ((!statusText || statusText.trim() === "") && !statusFile) {
+      toast({ title: "Add something!", description: "Please enter text or pick a file", variant: "destructive" });
+      return;
+    }
+    setIsUploading(true);
+    let mediaUrl: string | undefined;
+    try {
+      if (statusFile) {
+        // Upload file to 'status' bucket
+        const res = await uploadFile({ bucket: "status", file: statusFile, userId: user!.id });
+        mediaUrl = res.url;
+      }
+      await createStatus.mutateAsync({ content: statusText, mediaUrl });
+      setStatusText("");
+      setStatusFile(null);
+      toast({ title: "Status posted!", description: "Your story is now visible to contacts." });
+    } catch (err: any) {
+      toast({ title: "Failed to post status", description: err.message, variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -73,15 +122,64 @@ const StatusPage: React.FC = () => {
       {/* Header */}
       <div className="px-4 py-4 flex items-center justify-between border-b">
         <h1 className="text-xl font-bold text-wispa-500">Status</h1>
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/status/add")}
-          className="flex items-center space-x-2"
-        >
-          <PlusCircle className="h-5 w-5 mr-1" />
-          <span>Add</span>
+        <Button variant="ghost" onClick={() => signOut()}>
+          Log out
         </Button>
       </div>
+
+      {/* Create Status (Story) UI */}
+      {user && (
+        <form
+          id="status-create-form"
+          onSubmit={handlePostStatus}
+          className="flex flex-col gap-3 px-4 py-4 border-b bg-gray-50"
+        >
+          <div className="flex gap-3 items-center">
+            <span className="font-medium mr-2">Create new status</span>
+            <FileUpload
+              onFileSelect={handleFileSelect}
+              bucketType="status"
+              accept="image/*,video/*"
+              maxSize={10 * 1024 * 1024}
+              className="flex-1"
+            >
+              <Button type="button" variant="outline" size="sm" className="flex gap-2 items-center">
+                <Upload className="h-4 w-4" />
+                {statusFile ? "Change" : "Add photo/video"}
+              </Button>
+            </FileUpload>
+            {statusFile && (
+              <Button type="button" variant="ghost" size="icon" onClick={handleRemoveFile}>
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          {statusFile && (
+            <div className="mb-2">
+              <MediaPreview
+                src={URL.createObjectURL(statusFile)}
+                type={statusFile.type.startsWith("video") ? "video" : "image"}
+                name={statusFile.name}
+                showControls={false}
+              />
+            </div>
+          )}
+          <textarea
+            className="border rounded-md px-3 py-2 focus:ring-2 focus:ring-wispa-500"
+            value={statusText}
+            onChange={(e) => setStatusText(e.target.value)}
+            rows={2}
+            placeholder="What's up?"
+            maxLength={300}
+            disabled={isUploading}
+          />
+          <div className="flex items-center justify-end">
+            <Button type="submit" disabled={isUploading || (!statusText && !statusFile)}>
+              {isUploading ? "Posting..." : "Post Status"}
+            </Button>
+          </div>
+        </form>
+      )}
 
       {/* Story Bar */}
       <StatusStoryBar
