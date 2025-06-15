@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Eye, MessageCircle, Share, MoreVertical } from 'lucide-react';
@@ -44,66 +45,136 @@ const StatusCard: React.FC<StatusCardProps> = ({
   };
 
   return (
-    <div className="rounded-xl bg-white/90 dark:bg-card/90 shadow-lg p-3 flex flex-col mb-2 border border-muted max-w-sm mx-auto relative">
-      <div className="flex items-center gap-3 mb-2">
-        <Avatar 
-          src={status.user?.avatar_url} 
-          alt={status.user?.username || 'User'} 
-          size="md"
-        />
-        <div>
-          <p className="font-bold text-gray-900 dark:text-white">{status.user?.username || 'Anonymous User'}</p>
-          <p className="text-xs text-muted-foreground">
-            {formatDistanceToNow(new Date(status.created_at), { addSuffix: true })}
-          </p>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          {onClose && (
+    <div className="fixed inset-0 z-50 bg-black">
+      {/* Header */}
+      <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/70 to-transparent p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Avatar 
+              src={status.user?.avatar_url} 
+              alt={status.user?.username || 'User'} 
+              size="sm"
+            />
+            <div>
+              <p className="text-white font-medium">
+                {status.user?.username || 'Anonymous User'}
+              </p>
+              <p className="text-white/70 text-sm">
+                {formatDistanceToNow(new Date(status.created_at), { addSuffix: true })}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
-              onClick={onClose}
-              className="text-primary"
+              className="text-white hover:bg-white/20"
             >
-              ✕
+              <MoreVertical className="h-4 w-4" />
             </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground"
-          >
-            <MoreVertical className="h-4 w-4" />
-          </Button>
+            {onClose && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                className="text-white hover:bg-white/20"
+              >
+                ✕
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Media preview */}
-      {status.media_url && (
-        <div className="aspect-video w-full rounded-xl bg-gray-100 mb-2 overflow-hidden">
+      {/* Content */}
+      <div className="flex items-center justify-center h-full">
+        {status.media_url ? (
           <MediaPreview
             src={status.media_url}
             type={getMediaType(status.media_url)}
             showControls={false}
-            className="h-full w-full object-cover"
+            className="max-w-full max-h-full"
           />
+        ) : (
+          <div className="flex items-center justify-center p-8">
+            <p className="text-white text-xl text-center max-w-md">
+              {status.content}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Text overlay for media with text */}
+      {status.media_url && status.content && (
+        <div className="absolute bottom-32 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+          <p className="text-white text-center">
+            {status.content}
+          </p>
         </div>
       )}
 
-      {/* Status text */}
-      <div className="px-2 font-medium text-base text-gray-800 dark:text-white min-h-[2rem]">
-        {status.content}
+      {/* Footer Actions */}
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+        <div className="flex items-center justify-center gap-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-white hover:bg-white/20 flex items-center gap-2"
+          >
+            <Eye className="h-4 w-4" />
+            <span>{status.viewed_by.length}</span>
+          </Button>
+          
+          {user && (
+            <StatusReactions
+              statusId={status.id}
+              reactions={status.reactions || {}}
+              currentUserId={user.id}
+            />
+          )}
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-white hover:bg-white/20"
+          >
+            <MessageCircle className="h-4 w-4" />
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-white hover:bg-white/20"
+          >
+            <Share className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* Footer actions */}
-      <div className="mt-3 flex items-center gap-5 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <Eye className="h-4 w-4" /> {status.viewed_by.length}
-        </span>
-        {user && <StatusReactions statusId={status.id} reactions={status.reactions || {}} currentUserId={user.id} />}
-        <Button variant="ghost" size="sm"><MessageCircle className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="sm"><Share className="h-4 w-4" /></Button>
-      </div>
+      {/* Navigation */}
+      {showNavigation && (
+        <>
+          {onPrevious && (
+            <Button
+              variant="ghost"
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20"
+              onClick={onPrevious}
+            >
+              ←
+            </Button>
+          )}
+          {onNext && (
+            <Button
+              variant="ghost"
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20"
+              onClick={onNext}
+            >
+              →
+            </Button>
+          )}
+        </>
+      )}
     </div>
   );
 };

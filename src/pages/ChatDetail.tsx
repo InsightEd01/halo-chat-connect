@@ -284,7 +284,7 @@ const ChatDetail: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-background">
+      <div className="wispa-container flex items-center justify-center">
         <p>Loading conversation...</p>
       </div>
     );
@@ -293,11 +293,11 @@ const ChatDetail: React.FC = () => {
   if (isError || !chat) {
     const errorMessage = error instanceof Error ? error.message : 'Conversation not found';
     return (
-      <div className="h-screen flex flex-col items-center justify-center space-y-4 bg-background">
-        <p className="text-destructive">{errorMessage}</p>
+      <div className="wispa-container flex flex-col items-center justify-center space-y-4">
+        <p className="text-red-600">{errorMessage}</p>
         <Link 
           to="/chats" 
-          className="text-primary hover:underline"
+          className="text-wispa-500 hover:text-wispa-600"
         >
           Return to chats
         </Link>
@@ -308,36 +308,38 @@ const ChatDetail: React.FC = () => {
   const otherTypingUsers = typingUsers.filter(id => id !== user?.id);
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      <header className="bg-background border-b px-2 py-2 sm:px-4 flex items-center">
-        <Link to="/chats" className="mr-2 p-2 rounded-full hover:bg-muted">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <Avatar src={otherParticipant?.avatar_url || undefined} alt={otherParticipant?.username || ''} status={null} />
-        <div className="ml-3">
-          <h2 className="font-medium">{otherParticipant?.username}</h2>
-          <p className="text-xs text-muted-foreground">
-            {otherTypingUsers.length > 0 ? 'Typing...' : 'Online'}
-          </p>
+    <div className="wispa-container">
+      <header className="wispa-header">
+        <div className="flex items-center">
+          <Link to="/chats" className="mr-3">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <Avatar src={otherParticipant?.avatar_url || undefined} alt={otherParticipant?.username || ''} status={null} />
+          <div className="ml-3">
+            <h2 className="font-medium">{otherParticipant?.username}</h2>
+            <p className="text-xs text-wispa-100">
+              {otherTypingUsers.length > 0 ? 'Typing...' : 'Last seen recently'}
+            </p>
+          </div>
         </div>
         
-        <div className="ml-auto flex space-x-1">
-          <button 
-            onClick={() => handleCall('video')}
-            className="p-2 rounded-full text-primary hover:bg-muted"
-          >
-            <Video className="h-5 w-5" />
-          </button>
+        <div className="flex space-x-3">
           <button 
             onClick={() => handleCall('audio')}
-            className="p-2 rounded-full text-primary hover:bg-muted"
+            className="p-2 rounded-full hover:bg-wispa-600"
           >
             <Phone className="h-5 w-5" />
+          </button>
+          <button 
+            onClick={() => handleCall('video')}
+            className="p-2 rounded-full hover:bg-wispa-600"
+          >
+            <Video className="h-5 w-5" />
           </button>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="p-2 rounded-full text-muted-foreground hover:bg-muted">
+              <button className="p-2 rounded-full hover:bg-wispa-600">
                 <MoreVertical className="h-5 w-5" />
               </button>
             </DropdownMenuTrigger>
@@ -351,10 +353,10 @@ const ChatDetail: React.FC = () => {
                 Archive chat
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleBlockUser} className="text-destructive">
+              <DropdownMenuItem onClick={handleBlockUser} className="text-red-600">
                 Block user
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleDeleteChat} className="text-destructive">
+              <DropdownMenuItem onClick={handleDeleteChat} className="text-red-600">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete chat
               </DropdownMenuItem>
@@ -363,7 +365,7 @@ const ChatDetail: React.FC = () => {
         </div>
       </header>
       
-      <div className="flex-1 overflow-y-auto p-4 bg-gray-100 dark:bg-zinc-900">
+      <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
         {chat.messages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-500">
             <p>No messages yet. Start the conversation!</p>

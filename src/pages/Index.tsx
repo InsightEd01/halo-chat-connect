@@ -2,68 +2,34 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
-
-const onboardingSlides = [
-  {
-    image: "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?q=80&w=2070&auto=format&fit=crop",
-    title: "Connect Instantly",
-    description: "Message friends, family, and colleagues with WispaChat in real-time, wherever you are.",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?q=80&w=2070&auto=format&fit=crop",
-    title: "Share Effortlessly",
-    description: "Send photos, videos, voice notes, docs, and more in just one tap.",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=2071&auto=format&fit=crop",
-    title: "High-Quality Calls",
-    description: "Enjoy crystal-clear voice and video calls, day or night.",
-  },
-];
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-tr from-orange-50 to-yellow-50">
-      <div className="flex-1 flex items-center justify-center p-4 md:p-6">
-        <Carousel className="w-full max-w-xs mx-auto rounded-xl shadow-lg overflow-hidden" opts={{ loop: true }}>
-          <CarouselContent>
-            {onboardingSlides.map((slide, index) => (
-              <CarouselItem key={index}>
-                <div className="text-center flex flex-col justify-between">
-                  <div className="aspect-square w-full overflow-hidden rounded-xl mb-6 shadow-md border-2 border-primary">
-                    <img 
-                      src={slide.image} 
-                      alt={slide.title} 
-                      className="w-full h-full object-cover scale-110"
-                    />
-                  </div>
-                  <h2 className="text-2xl font-extrabold text-primary mb-2">{slide.title}</h2>
-                  <p className="text-muted-foreground mb-6 px-2">{slide.description}</p>
-                </div>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious className="left-0 bg-primary/80 text-white" />
-          <CarouselNext className="right-0 bg-primary/80 text-white" />
-        </Carousel>
-      </div>
-      <div className="p-6 border-t border-border bg-white/80 sticky bottom-0 z-10 shadow-t-lg">
-        <Link to="/auth">
-          <Button className="w-full bg-gradient-to-r from-orange-500 to-yellow-400 text-white font-bold py-3 text-base h-12 rounded-lg">
-            Get Started
-          </Button>
-        </Link>
-        <p className="mt-4 text-xs text-muted-foreground text-center">
-          By continuing, you agree to our Terms of Service.
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6">
+      <div className="text-center max-w-md">
+        <div className="inline-block p-4 bg-wispa-100 rounded-full mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#FF5722" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2v5Z"></path>
+            <path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"></path>
+          </svg>
+        </div>
+        
+        <h1 className="text-4xl font-bold mb-4 text-gray-900">Welcome to WispaChat</h1>
+        <p className="text-xl text-gray-600 mb-8">
+          A modern messaging platform that keeps you connected with friends and family.
         </p>
-        <div className="text-xs text-center text-muted-foreground mt-2 font-bold tracking-wider">WispaChat</div>
+        
+        <div className="flex flex-col space-y-3">
+          <Link to="/auth">
+            <Button className="w-full bg-wispa-500 hover:bg-wispa-600 text-white">
+              Get Started
+            </Button>
+          </Link>
+        </div>
+        
+        <p className="mt-6 text-sm text-gray-500">
+          By continuing, you agree to our Terms of Service and Privacy Policy.
+        </p>
       </div>
     </div>
   );

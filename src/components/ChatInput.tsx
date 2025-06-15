@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Paperclip, Mic, Smile, Square, X } from 'lucide-react';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -95,73 +94,70 @@ const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="border-t p-2 bg-background">
+    <div className="border-t p-4 space-y-2">
       {replyTo && (
-        <div className="flex items-center justify-between bg-muted p-2 rounded-lg mx-2 mb-2">
-          <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-medium text-primary">
-              Replying to {replyTo.user?.username || 'User'}
+        <div className="flex items-center justify-between bg-gray-100 p-2 rounded">
+          <div className="flex-1">
+            <p className="text-sm text-gray-500">
+              Replying to <span className="font-medium">{replyTo.user?.username || 'User'}</span>
             </p>
-            <p className="text-sm truncate text-muted-foreground">
+            <p className="text-sm truncate">
               {replyTo.type === 'voice' ? 'Voice message' : replyTo.content}
             </p>
           </div>
           <button 
             onClick={onCancelReply} 
-            className="p-1 hover:bg-background rounded-full"
+            className="p-1 hover:bg-gray-200 rounded-full"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
       )}
       
-      <form onSubmit={handleSubmit} className="p-1 flex items-center space-x-2">
-        <button type="button" className="p-2 text-muted-foreground rounded-full hover:bg-muted" disabled={disabled}>
+      <form onSubmit={handleSubmit} className="bg-white p-3 flex items-center border-t">
+        <button type="button" className="p-2 text-gray-500 rounded-full hover:bg-gray-100" disabled={disabled}>
           <Smile className="h-6 w-6" />
+        </button>
+        <button type="button" className="p-2 text-gray-500 rounded-full hover:bg-gray-100" disabled={disabled}>
+          <Paperclip className="h-6 w-6" />
         </button>
         
         {!isRecording ? (
           <>
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                placeholder="Message"
-                className="w-full bg-muted border-transparent rounded-full py-2 px-4 pr-12 focus:outline-none focus:ring-2 focus:ring-primary"
-                value={message}
-                onChange={handleMessageChange}
-                disabled={disabled}
-              />
-              <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-muted-foreground rounded-full hover:bg-background" disabled={disabled}>
-                <Paperclip className="h-5 w-5" />
-              </button>
-            </div>
-            
-            {message.trim() ? (
-              <button 
-                type="submit" 
-                disabled={!message.trim() || disabled}
-                className="p-3 bg-primary text-primary-foreground rounded-full disabled:bg-muted"
-              >
-                <Send className="h-5 w-5" />
-              </button>
-            ) : (
+            <input
+              type="text"
+              placeholder="Message"
+              className="flex-1 border rounded-full py-2 px-4 mx-2 focus:outline-none focus:ring-2 focus:ring-wispa-500"
+              value={message}
+              onChange={handleMessageChange}
+              disabled={disabled}
+            />
+            {!message.trim() ? (
               <button 
                 type="button" 
                 onClick={startRecording}
-                className="p-3 bg-primary text-primary-foreground rounded-full disabled:bg-muted"
+                className="p-2 bg-wispa-500 text-white rounded-full disabled:bg-gray-300 disabled:cursor-not-allowed"
                 disabled={disabled}
               >
                 <Mic className="h-5 w-5" />
               </button>
+            ) : (
+              <button 
+                type="submit" 
+                disabled={!message.trim() || disabled}
+                className="p-2 bg-wispa-500 text-white rounded-full disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                <Send className="h-5 w-5" />
+              </button>
             )}
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-between bg-muted rounded-full px-4 py-2">
-            <div className="text-destructive animate-pulse font-medium">Recording...</div>
+          <div className="flex-1 flex items-center justify-between mx-2">
+            <div className="text-red-500 animate-pulse">Recording...</div>
             <button 
               type="button" 
               onClick={stopRecording}
-              className="p-3 bg-destructive text-destructive-foreground rounded-full"
+              className="p-2 bg-red-500 text-white rounded-full"
             >
               <Square className="h-5 w-5" />
             </button>
