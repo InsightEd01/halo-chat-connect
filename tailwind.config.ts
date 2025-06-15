@@ -18,9 +18,6 @@ export default {
 			}
 		},
 		extend: {
-			fontFamily: {
-				sans: ['Inter', 'system-ui', 'sans-serif'],
-			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -64,33 +61,12 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				},
-				wispa: {
-					50: '#e8f0fe',
-					100: '#d0e1fd',
-					200: '#a6c5fa',
-					300: '#79a8f8',
-					400: '#4b8af6',
-					500: '#2368e6',
-					600: '#1850b8',
-					700: '#133d8c',
-					800: '#102b63',
-					900: '#0c1d3f',
-					primary: '#2368e6',
-					"primary-light": '#e8f0fe',
-					"primary-dark": '#0c1d3f',
-					accent: '#FFD600', // yellow accent as in some screens
 				}
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)',
-				xl: '2rem',
-				'2xl': '3rem',
-			},
-			boxShadow: {
-				wispa: "0 2px 8px 0 rgba(35, 104, 230, 0.07)",
+				sm: 'calc(var(--radius) - 4px)'
 			},
 			keyframes: {
 				'accordion-down': {

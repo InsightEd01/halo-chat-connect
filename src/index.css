@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -114,46 +115,3 @@
     @apply bg-muted-foreground/50;
   }
 }
-
-@layer base {
-  html, body {
-    background-color: #f6f8fa;
-    font-family: theme(fontFamily.sans);
-  }
-  body {
-    @apply bg-wispa-50;
-  }
-  .wispa-container {
-    @apply flex flex-col min-h-screen bg-wispa-50 max-w-md mx-auto shadow-wispa;
-  }
-  .wispa-header {
-    @apply flex items-center px-4 py-3 bg-white rounded-b-2xl mb-1 shadow;
-    min-height: 64px;
-  }
-  .wispa-content-with-navbar {
-    @apply pb-24; /* space for bottom bar */
-  }
-  /* Tabs styling */
-  .wispa-tabs {
-    @apply flex bg-wispa-100 rounded-2xl mx-3 mt-2 mb-4;
-  }
-  .wispa-tab {
-    @apply flex-1 px-2 py-2 text-center font-semibold rounded-2xl transition-colors;
-  }
-  .wispa-tab-active {
-    @apply bg-wispa-500 text-white;
-  }
-  /* Bottom navbar */
-  .wispa-navbar {
-    @apply fixed bottom-0 left-0 right-0 flex justify-around items-center bg-white max-w-md w-full z-40 h-16 shadow rounded-t-xl mx-auto border-t border-wispa-100;
-  }
-  .wispa-navbar-item {
-    @apply flex flex-col items-center justify-center text-xs text-wispa-500 font-semibold hover:text-wispa-700 py-1 px-2 rounded transition-colors;
-  }
-  .wispa-navbar-item-active {
-    @apply text-wispa-700 bg-wispa-100;
-  }
-}
-
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-thumb { background: #e3e8ef }
