@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Search, MoreVertical, User, Archive, Settings } from 'lucide-react';
@@ -9,6 +8,7 @@ import NavBar from '@/components/NavBar';
 import SettingsDialog from '@/components/SettingsDialog';
 import { useUserChats } from '@/services/chatService';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePresence } from '@/services/presenceService';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +23,11 @@ const ChatList: React.FC = () => {
   const navigate = useNavigate();
   const { data: chats, isLoading } = useUserChats();
   const [showSettings, setShowSettings] = useState(false);
+
+  const otherParticipantIds = chats?.flatMap(chat =>
+    chat.participants.filter(p => p.id !== user?.id).map(p => p.id)
+  ) || [];
+  const { presence, isOnline } = usePresence(otherParticipantIds);
 
   const handleProfileSettings = () => {
     navigate('/profile');
@@ -96,7 +101,7 @@ const ChatList: React.FC = () => {
           <div>
             {chats.map(chat => {
               const otherParticipant = chat.participants.find(p => p.id !== user?.id);
-              
+              const onlineStatus = otherParticipant ? (isOnline(otherParticipant.id) ? "online" : "offline") : null;
               return (
                 <ChatListItem
                   key={chat.id}
@@ -107,7 +112,7 @@ const ChatList: React.FC = () => {
                   lastMessage={chat.lastMessage?.content}
                   timestamp={chat.lastMessage?.created_at ? new Date(chat.lastMessage.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined}
                   unreadCount={0}
-                  status={null}
+                  status={onlineStatus}
                 />
               );
             })}

@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/services/notificationService';
+import { usePresence } from '@/services/presenceService';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +59,8 @@ const ChatDetail: React.FC = () => {
   const { typingUsers, setTyping } = useTypingStatus(id || '');
   const { markMessageAsRead } = useMessageStatus(id || '');
   useNotifications();
+
+  const { presence, isOnline } = usePresence(otherParticipant ? [otherParticipant.id] : []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -314,11 +317,16 @@ const ChatDetail: React.FC = () => {
           <Link to="/chats" className="mr-3">
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <Avatar src={otherParticipant?.avatar_url || undefined} alt={otherParticipant?.username || ''} status={null} />
+          <Avatar src={otherParticipant?.avatar_url || undefined} alt={otherParticipant?.username || ''} status={otherParticipant ? (isOnline(otherParticipant.id) ? "online" : "offline") : null} />
           <div className="ml-3">
-            <h2 className="font-medium">{otherParticipant?.username}</h2>
+            <h2 className="font-medium flex items-center">
+              {otherParticipant?.username}
+              {isOnline(otherParticipant?.id ?? '') && (
+                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-600">Online</span>
+              )}
+            </h2>
             <p className="text-xs text-wispa-100">
-              {otherTypingUsers.length > 0 ? 'Typing...' : 'Last seen recently'}
+              {otherTypingUsers.length > 0 ? 'Typing...' : (isOnline(otherParticipant?.id ?? '') ? "Active now" : "Last seen recently")}
             </p>
           </div>
         </div>

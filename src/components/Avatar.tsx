@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -51,4 +50,3 @@ const Avatar: React.FC<AvatarProps> = ({
   );
 };
 export default Avatar;
-
