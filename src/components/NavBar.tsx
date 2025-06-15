@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { MessageSquare, Phone, ImageIcon, User } from 'lucide-react';
@@ -26,11 +25,11 @@ const NavBar: React.FC = () => {
   const isActive = (path: string) => activePath === path;
 
   return (
-    <div className="wispa-navbar">
+    <nav className="wispa-navbar bg-white dark:bg-gray-900 border-t dark:border-gray-700 py-2 shadow-lg fixed bottom-0 left-0 right-0 max-w-md mx-auto z-30 flex items-center justify-around">
       <Link
         to="/chats"
         className={cn(
-          "wispa-navbar-item",
+          "wispa-navbar-item group",
           isActive('/chats') && "wispa-navbar-item-active"
         )}
       >
@@ -41,7 +40,7 @@ const NavBar: React.FC = () => {
       <Link
         to="/status"
         className={cn(
-          "wispa-navbar-item",
+          "wispa-navbar-item group",
           isActive('/status') && "wispa-navbar-item-active"
         )}
       >
@@ -52,7 +51,7 @@ const NavBar: React.FC = () => {
       <Link
         to="/calls"
         className={cn(
-          "wispa-navbar-item",
+          "wispa-navbar-item group",
           isActive('/calls') && "wispa-navbar-item-active"
         )}
       >
@@ -63,7 +62,7 @@ const NavBar: React.FC = () => {
       <Link
         to="/profile"
         className={cn(
-          "wispa-navbar-item relative",
+          "wispa-navbar-item group relative",
           isActive('/profile') && "wispa-navbar-item-active"
         )}
       >
@@ -75,7 +74,7 @@ const NavBar: React.FC = () => {
         )}
         <span className="text-xs mt-1">Profile</span>
       </Link>
-    </div>
+    </nav>
   );
 };
 

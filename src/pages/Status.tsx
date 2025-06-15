@@ -10,6 +10,8 @@ import { useCreateStatus, useStatusUpdates } from '@/services/statusService';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { uploadFile } from '@/services/fileUploadService';
+import StatusStoryBar from '@/components/StatusStoryBar';
+import StatusViewer from '@/components/StatusViewer';
 
 const Status: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
@@ -20,6 +22,8 @@ const Status: React.FC = () => {
   
   const { data: statusUpdates = [], isLoading } = useStatusUpdates();
   const { mutate: createStatus, isPending } = useCreateStatus();
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [activeStatusId, setActiveStatusId] = useState<string|undefined>();
 
   const handleCreateStatus = async () => {
     if (!content.trim() && !selectedFile) {
@@ -85,10 +89,38 @@ const Status: React.FC = () => {
     }
   };
 
+  // Prepare story bar data: current user + friends, show own first
+  const ownStatus = statusUpdates?.find((s) => s.user_id === user?.id);
+  const otherStatuses = statusUpdates?.filter((s) => s.user_id !== user?.id) || [];
+  const storyStatuses = [
+    ...(ownStatus
+      ? [{ id: ownStatus.id, user: ownStatus.user || { username: user?.email?.split('@')[0] || 'Me', avatar_url: user?.avatar_url }, isOwn: true }]
+      : [{
+        id: 'my-status-placeholder',
+        user: { username: user?.email?.split('@')[0] || 'Me', avatar_url: user?.avatar_url },
+        isOwn: true
+      }]
+    ),
+    ...otherStatuses.map((s) => ({
+      id: s.id,
+      user: s.user,
+      isOwn: false
+    }))
+  ];
+
+  const handleStatusBarSelect = (storyId: string) => {
+    if (storyId === 'my-status-placeholder') {
+      setIsCreating(true);
+      return;
+    }
+    setActiveStatusId(storyId);
+    setViewerOpen(true);
+  };
+
   return (
     <div className="wispa-container">
       <header className="wispa-header">
-        <h1 className="text-2xl font-bold">Status</h1>
+        <h1 className="text-2xl font-bold tracking-tighter">WispaChat</h1>
         <Dialog open={isCreating} onOpenChange={setIsCreating}>
           <DialogTrigger asChild>
             <Button className="bg-wispa-500 hover:bg-wispa-600">
@@ -150,8 +182,13 @@ const Status: React.FC = () => {
           </DialogContent>
         </Dialog>
       </header>
-      
-      <div className="flex-1 overflow-y-auto wispa-content-with-navbar p-4">
+      <StatusStoryBar
+        statuses={storyStatuses}
+        currentUserId={user?.id}
+        myStatusId={ownStatus?.id}
+        onSelect={handleStatusBarSelect}
+      />
+      <div className="flex-1 overflow-y-auto wispa-content-with-navbar p-4 bg-wispa-50 dark:bg-gray-950 min-h-[0]">
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
             <p>Loading status updates...</p>
@@ -165,9 +202,27 @@ const Status: React.FC = () => {
             <p className="text-gray-500">Error loading statuses.</p>
           </div>
         ) : statusUpdates.length > 0 ? (
-          <div className="space-y-4">
-            {statusUpdates.map(status => (
-              <StatusCard key={status.id} status={status} />
+          <div className="space-y-6 mt-6">
+            {otherStatuses.length === 0 && (
+              <EmptyState
+                title="No friends' status updates"
+                description="Ask your friends to post a status!"
+              />
+            )}
+            {otherStatuses.map(status => (
+              <div
+                key={status.id}
+                className="hover:bg-wispa-100 rounded-xl p-2 mb-2 transition cursor-pointer"
+                onClick={() => { setActiveStatusId(status.id); setViewerOpen(true); }}
+              >
+                <div className="flex items-center space-x-3">
+                  <Avatar src={status.user?.avatar_url} alt={status.user?.username} size="md" />
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold">{status.user?.username}</div>
+                    <div className="text-xs text-gray-500">{status.content?.slice(0, 32) || "Media update"}</div>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         ) : (
@@ -179,16 +234,20 @@ const Status: React.FC = () => {
             <div className="mt-4 text-xs text-gray-400 text-center">
               {/* Debug info for development */}
               <p>
-                No statuses matched query.
-                <br />
+                No statuses matched query.<br />
                 Make sure your time, timezone, and session is correct.
               </p>
             </div>
           </div>
         )}
       </div>
-      
       <NavBar />
+      <StatusViewer
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        initialStatusId={activeStatusId}
+        statuses={statusUpdates}
+      />
     </div>
   );
 };
