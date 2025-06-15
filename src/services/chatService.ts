@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -103,7 +102,6 @@ export function useUserChats() {
     queryKey: ['chats', user?.id],
     queryFn: async () => {
       if (!user) throw new Error('No user');
-      
       try {
         console.log('Fetching chats for user:', user.id);
         
@@ -215,15 +213,20 @@ export function useUserChats() {
         console.log('Successfully fetched chats:', result.length);
         return result;
       } catch (error) {
-        console.error('Error fetching chats:', error);
+        console.error('[userChats] Error:', error);
         throw error;
       }
     },
     enabled: !!user,
-    staleTime: 1000 * 30,
-    refetchInterval: 5000,
-    retry: (failureCount, error) => {
-      return failureCount < 3 && !error.message?.includes('404');
+    staleTime: 1000 * 60 * 2,
+    refetchInterval: 10000,
+    retry: (failureCount, error: any) => {
+      // Log for audit
+      if (error) console.error('[userChats] Retrying after error:', error);
+      return failureCount < 3 && (!error?.message || !error?.message.includes('404'));
+    },
+    onError: (error) => {
+      console.error('[userChats] Query failed:', error);
     }
   });
 }
@@ -236,9 +239,8 @@ export function useChat(chatId: string | undefined) {
   return useQuery({
     queryKey: ['chat', chatId],
     queryFn: async () => {
-      if (!chatId || !user) throw new Error('No chat ID or user');
-      
       try {
+        if (!chatId || !user) throw new Error('No chat ID or user');
         console.log('Fetching chat:', chatId, 'for user:', user.id);
         
         // First check if user is a participant in this chat
@@ -412,15 +414,19 @@ export function useChat(chatId: string | undefined) {
         console.log('Successfully fetched chat with', result.messages.length, 'messages');
         return result;
       } catch (error) {
-        console.error('Error fetching chat:', error);
+        console.error('[useChat] Error:', error);
         throw error;
       }
     },
     enabled: !!chatId && !!user,
-    staleTime: 1000 * 10,
-    refetchInterval: 3000,
-    retry: (failureCount, error) => {
-      return failureCount < 3 && !error.message?.includes('404') && !error.message?.includes('Access denied');
+    staleTime: 1000 * 5,
+    refetchInterval: 2000,
+    retry: (failureCount, error: any) => {
+      if (error) console.error('[useChat] Retrying after error:', error);
+      return failureCount < 3 && (!error?.message?.includes('404') && !error?.message?.includes('Access denied'));
+    },
+    onError: (error) => {
+      console.error('[useChat] Query failed:', error);
     }
   });
 }
@@ -443,85 +449,89 @@ export function useSendMessage() {
       replyTo?: string;
     }) => {
       if (!user) throw new Error('No user');
-      
-      console.log('Sending message to chat:', chatId, 'type:', type);
-      
-      // Check if user is a participant before sending
-      const isParticipant = await checkUserParticipation(chatId, user.id);
-      if (!isParticipant) {
-        throw new Error('Access denied: You are not a participant in this chat');
-      }
+      try {
+        console.log('Sending message to chat:', chatId, 'type:', type);
+        
+        // Check if user is a participant before sending
+        const isParticipant = await checkUserParticipation(chatId, user.id);
+        if (!isParticipant) {
+          throw new Error('Access denied: You are not a participant in this chat');
+        }
 
-      let finalContent = content;
-      let mediaUrl = null;
+        let finalContent = content;
+        let mediaUrl = null;
 
-      // If it's a voice message, upload it to storage
-      if (type === 'voice') {
-        try {
-          // Convert base64 to blob
-          const base64Data = content.split(',')[1];
-          const audioBlob = await fetch(`data:audio/webm;base64,${base64Data}`).then(r => r.blob());
+        // If it's a voice message, upload it to storage
+        if (type === 'voice') {
+          try {
+            // Convert base64 to blob
+            const base64Data = content.split(',')[1];
+            const audioBlob = await fetch(`data:audio/webm;base64,${base64Data}`).then(r => r.blob());
+            
+            // Upload to Supabase storage
+            const fileName = `voice-${Date.now()}.webm`;
+            const { data: uploadData, error: uploadError } = await supabase
+              .storage
+              .from('voice-messages')
+              .upload(fileName, audioBlob);
+
+            if (uploadError) throw uploadError;
+
+            // Get public URL
+            const { data: { publicUrl } } = supabase
+              .storage
+              .from('voice-messages')
+              .getPublicUrl(fileName);
+
+            mediaUrl = publicUrl;
+            finalContent = 'Voice message'; // Fallback text
+          } catch (error) {
+            console.error('Error uploading voice message:', error);
+            throw error;
+          }
+        }
+        
+        // Insert new message
+        const { data, error } = await supabase
+          .from('messages')          .insert({
+            chat_id: chatId,
+            user_id: user.id,
+            content: finalContent,
+            type,
+            media_url: mediaUrl,
+            status: 'sent',
+            reply_to: replyTo
+          })
+          .select()
+          .single();
           
-          // Upload to Supabase storage
-          const fileName = `voice-${Date.now()}.webm`;
-          const { data: uploadData, error: uploadError } = await supabase
-            .storage
-            .from('voice-messages')
-            .upload(fileName, audioBlob);
-
-          if (uploadError) throw uploadError;
-
-          // Get public URL
-          const { data: { publicUrl } } = supabase
-            .storage
-            .from('voice-messages')
-            .getPublicUrl(fileName);
-
-          mediaUrl = publicUrl;
-          finalContent = 'Voice message'; // Fallback text
-        } catch (error) {
-          console.error('Error uploading voice message:', error);
+        if (error) {
+          console.error('Error sending message:', error);
           throw error;
         }
-      }
-      
-      // Insert new message
-      const { data, error } = await supabase
-        .from('messages')          .insert({
-          chat_id: chatId,
-          user_id: user.id,
-          content: finalContent,
-          type,
-          media_url: mediaUrl,
-          status: 'sent',
-          reply_to: replyTo
-        })
-        .select()
-        .single();
         
-      if (error) {
-        console.error('Error sending message:', error);
+        // Update chat's updated_at timestamp
+        await supabase
+          .from('chats')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', chatId);
+          
+        // Get user profile for the message
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        console.log('Message sent successfully');
+        return {
+          ...data,
+          user: profile
+        };
+      } catch (error) {
+        console.error('[useSendMessage] Failed to send:', error);
         throw error;
       }
-      
-      // Update chat's updated_at timestamp
-      await supabase
-        .from('chats')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', chatId);
-        
-      // Get user profile for the message
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-        
-      console.log('Message sent successfully');
-      return {
-        ...data,
-        user: profile
-      };
     },
     onSuccess: (data, variables) => {
       // Update the chat query data
@@ -554,6 +564,9 @@ export function useSendMessage() {
           });
         }
       );
+    },
+    onError: (error) => {
+      console.error('[useSendMessage] Mutation failed:', error);
     }
   });
 }

@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/services/notificationService';
 import { usePresence } from '@/services/presenceService';
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -290,6 +291,16 @@ const ChatDetail: React.FC = () => {
     }
   };
 
+  const { isOnline: networkIsOnline } = useNetworkStatus();
+
+  if (!networkIsOnline) {
+    return (
+      <div className="wispa-container flex items-center justify-center h-full">
+        <p className="text-destructive">You are offline. Chat is unavailable.</p>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="wispa-container flex items-center justify-center">
@@ -300,6 +311,11 @@ const ChatDetail: React.FC = () => {
 
   if (isError || !chat) {
     const errorMessage = error instanceof Error ? error.message : 'Conversation not found';
+    // Log the error for audit trail
+    if (error) {
+      // Could add integration with Sentry or external tool here
+      console.error("Chat loading error:", error);
+    }
     return (
       <div className="wispa-container flex flex-col items-center justify-center space-y-4">
         <p className="text-red-600">{errorMessage}</p>

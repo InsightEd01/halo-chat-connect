@@ -10,6 +10,7 @@ import FileUpload from "@/components/FileUpload";
 import MediaPreview from "@/components/MediaPreview";
 import { uploadFile } from "@/services/fileUploadService";
 import { useToast } from "@/hooks/use-toast";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 const StatusPage: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -111,10 +112,28 @@ const StatusPage: React.FC = () => {
     }
   };
 
+  const { isOnline } = useNetworkStatus();
+
+  if (!isOnline) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <span className="text-destructive">You are offline. Please check your connection.</span>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
         <span className="text-gray-500">Loading statuses...</span>
+      </div>
+    );
+  }
+
+  if (createStatus.isError || !statuses) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <span className="text-destructive">Failed to load statuses or post status. Please try again later.</span>
       </div>
     );
   }
