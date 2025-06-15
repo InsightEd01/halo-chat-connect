@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Plus, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { uploadFile } from '@/services/fileUploadService';
 import StatusStoryBar from '@/components/StatusStoryBar';
 import StatusViewer from '@/components/StatusViewer';
+import { Skeleton } from '@/components/ui/skeleton';
+import Avatar from '@/components/Avatar';
 
 const Status: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
@@ -190,8 +193,16 @@ const Status: React.FC = () => {
       />
       <div className="flex-1 overflow-y-auto wispa-content-with-navbar p-4 bg-wispa-50 dark:bg-gray-950 min-h-[0]">
         {isLoading ? (
-          <div className="flex items-center justify-center h-32">
-            <p>Loading status updates...</p>
+          <div className="space-y-4 mt-2">
+            {[...Array(5)].map((_, i) => (
+              <div className="flex items-center space-x-3" key={i}>
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="flex-1">
+                  <Skeleton className="h-4 w-32 mb-2" />
+                  <Skeleton className="h-3 w-44" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : !user ? (
           <div className="flex items-center justify-center h-32">
@@ -216,7 +227,7 @@ const Status: React.FC = () => {
                 onClick={() => { setActiveStatusId(status.id); setViewerOpen(true); }}
               >
                 <div className="flex items-center space-x-3">
-                  <Avatar src={status.user?.avatar_url} alt={status.user?.username} size="md" />
+                  <Avatar src={status.user?.avatar_url ?? undefined} alt={status.user?.username} size="md" />
                   <div className="flex-1">
                     <div className="text-sm font-semibold">{status.user?.username}</div>
                     <div className="text-xs text-gray-500">{status.content?.slice(0, 32) || "Media update"}</div>
