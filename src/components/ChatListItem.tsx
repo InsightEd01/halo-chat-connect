@@ -28,7 +28,7 @@ const ChatListItem: React.FC<ChatListItemProps> = ({
   return (
     <Link 
       to={`/chat/${id}`}
-      className="px-4 py-3 border-b flex items-center hover:bg-gray-50 transition-colors"
+      className="px-4 py-3 border-b flex items-center hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
     >
       <Avatar src={avatar} alt={name} status={status} />
       
@@ -56,7 +56,7 @@ const ChatListItem: React.FC<ChatListItemProps> = ({
           {unreadCount > 0 && (
             <span 
               className={cn(
-                "ml-2 flex-shrink-0 bg-wispa-500 text-white text-xs rounded-full h-5 min-w-[1.25rem] flex items-center justify-center px-1",
+                "ml-2 flex-shrink-0 bg-primary text-primary-foreground text-xs rounded-full h-5 min-w-[1.25rem] flex items-center justify-center px-1 font-semibold",
               )}
             >
               {unreadCount}

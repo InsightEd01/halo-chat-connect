@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Upload, X, FileIcon, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void;
@@ -24,10 +24,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
   const validateFile = (file: File): boolean => {
     if (file.size > maxSize) {
-      toast({
-        title: 'File too large',
+      toast.error('File too large', {
         description: `File size must be less than ${Math.round(maxSize / 1024 / 1024)}MB`,
-        variant: 'destructive',
       });
       return false;
     }
@@ -47,10 +45,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
     };
 
     if (!bucketLimits[bucketType].includes(file.type)) {
-      toast({
-        title: 'Invalid file type',
+      toast.error('Invalid file type', {
         description: 'Please select a supported file type',
-        variant: 'destructive',
       });
       return false;
     }
@@ -95,7 +91,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     <div className={className}>
       <div
         className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
-          isDragOver ? 'border-wispa-500 bg-wispa-50' : 'border-gray-300 hover:border-wispa-400'
+          isDragOver ? 'border-primary bg-primary/10' : 'border-gray-300 hover:border-primary/80'
         }`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}

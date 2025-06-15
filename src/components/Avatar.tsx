@@ -32,7 +32,7 @@ const Avatar: React.FC<AvatarProps> = ({
           className="h-full w-full object-cover"
         />
       ) : (
-        <div className="h-full w-full flex items-center justify-center bg-wispa-100 text-wispa-500 font-semibold">
+        <div className="h-full w-full flex items-center justify-center bg-primary/10 text-primary font-semibold">
           {alt.charAt(0).toUpperCase()}
         </div>
       )}

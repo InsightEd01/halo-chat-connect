@@ -14,7 +14,7 @@
     --popover: 210 50% 98%;
     --popover-foreground: 210 50% 10%;
 
-    --primary: 214 100% 50%;
+    --primary: 220 91% 64%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 214 90% 45%;
@@ -55,7 +55,7 @@
     --popover: 214 50% 5%;
     --popover-foreground: 214 50% 98%;
 
-    --primary: 214 100% 50%;
+    --primary: 220 91% 64%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 214 90% 45%;
@@ -107,71 +107,11 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #d1d5db;
+    @apply bg-muted-foreground/30;
     border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #9ca3af;
-  }
-
-  .dark ::-webkit-scrollbar-thumb {
-    background: #4b5563;
-  }
-
-  .dark ::-webkit-scrollbar-thumb:hover {
-    background: #6b7280;
-  }
-}
-
-@layer components {
-  .wispa-container {
-    @apply max-w-md mx-auto h-screen flex flex-col bg-white dark:bg-gray-900 overflow-hidden transition-colors duration-300;
-  }
-  
-  .wispa-header {
-    @apply bg-blue-500 dark:bg-blue-600 text-white px-4 py-3 flex items-center justify-between transition-colors duration-300;
-  }
-  
-  .wispa-chat-bubble {
-    @apply rounded-lg px-4 py-2 max-w-xs transition-colors duration-300;
-  }
-  
-  .wispa-sent {
-    @apply bg-blue-500 dark:bg-blue-600 text-white;
-  }
-  
-  .wispa-received {
-    @apply bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200;
-  }
-  
-  .wispa-btn {
-    @apply px-4 py-2 rounded-md font-medium transition-all duration-200;
-  }
-  
-  .wispa-btn-primary {
-    @apply bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-700;
-  }
-  
-  .wispa-btn-secondary {
-    @apply bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600;
-  }
-  
-  /* Updated navbar styles for WhatsApp-like bottom navigation */
-  .wispa-navbar {
-    @apply fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 flex items-center justify-around border-t dark:border-gray-700 py-2 z-10 max-w-md mx-auto transition-colors duration-300;
-  }
-  
-  .wispa-navbar-item {
-    @apply flex flex-col items-center justify-center px-4 py-1 text-gray-500 dark:text-gray-400 transition-colors duration-200;
-  }
-  
-  .wispa-navbar-item-active {
-    @apply text-blue-500 dark:text-blue-400;
-  }
-  
-  /* Add padding to the bottom of scrollable content areas to account for navbar */
-  .wispa-content-with-navbar {
-    @apply pb-16;
+    @apply bg-muted-foreground/50;
   }
 }

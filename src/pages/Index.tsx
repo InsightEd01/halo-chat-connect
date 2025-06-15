@@ -57,7 +57,7 @@ const Index = () => {
 
       <div className="p-6 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
         <Link to="/auth">
-          <Button className="w-full bg-wispa-500 hover:bg-wispa-600 text-white font-bold py-3 text-lg h-12">
+          <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 text-lg h-12">
             Get Started
           </Button>
         </Link>
