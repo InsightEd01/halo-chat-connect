@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreVertical, User, Archive, Settings } from 'lucide-react';
+import { Plus, Search, MoreVertical, User, Archive, Settings, LogOut } from 'lucide-react';
 import Avatar from '@/components/Avatar';
 import ChatListItem from '@/components/ChatListItem';
 import EmptyState from '@/components/EmptyState';
@@ -19,7 +20,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ChatList: React.FC = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { data: chats, isLoading } = useUserChats();
   const [showSettings, setShowSettings] = useState(false);
@@ -35,6 +36,10 @@ const ChatList: React.FC = () => {
 
   const handleArchivedChats = () => {
     navigate('/archived-chats');
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
   };
 
   return (
@@ -65,6 +70,14 @@ const ChatList: React.FC = () => {
                 <DropdownMenuItem onClick={() => setShowSettings(true)}>
                   <Settings className="h-4 w-4 mr-2" />
                   Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Log Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
