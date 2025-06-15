@@ -94,7 +94,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="border-t p-4 space-y-2">
+    <div
+      className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-30 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 p-2 sm:p-4"
+      style={{boxShadow:'0 -2px 8px #0001'}}
+    >
       {replyTo && (
         <div className="flex items-center justify-between bg-gray-100 p-2 rounded">
           <div className="flex-1">
@@ -114,7 +117,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
         </div>
       )}
       
-      <form onSubmit={handleSubmit} className="bg-white p-3 flex items-center border-t">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white dark:bg-gray-900 flex items-center border-t border-gray-200 dark:border-gray-800 rounded-full shadow-sm px-2 py-1"
+      >
         <button type="button" className="p-2 text-gray-500 rounded-full hover:bg-gray-100" disabled={disabled}>
           <Smile className="h-6 w-6" />
         </button>
@@ -127,7 +133,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
             <input
               type="text"
               placeholder="Message"
-              className="flex-1 border rounded-full py-2 px-4 mx-2 focus:outline-none focus:ring-2 focus:ring-wispa-500"
+              className="flex-1 border-0 outline-none bg-transparent py-2 px-2 mx-1 focus:ring-0 text-base"
               value={message}
               onChange={handleMessageChange}
               disabled={disabled}

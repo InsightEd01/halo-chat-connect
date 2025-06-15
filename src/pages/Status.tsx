@@ -156,6 +156,14 @@ const Status: React.FC = () => {
           <div className="flex items-center justify-center h-32">
             <p>Loading status updates...</p>
           </div>
+        ) : !user ? (
+          <div className="flex items-center justify-center h-32">
+            <p className="text-gray-500">You must be logged in to view statuses.</p>
+          </div>
+        ) : !statusUpdates ? (
+          <div className="flex items-center justify-center h-32">
+            <p className="text-gray-500">Error loading statuses.</p>
+          </div>
         ) : statusUpdates.length > 0 ? (
           <div className="space-y-4">
             {statusUpdates.map(status => (
@@ -163,10 +171,20 @@ const Status: React.FC = () => {
             ))}
           </div>
         ) : (
-          <EmptyState
-            title="No status updates"
-            description="Be the first to share what's on your mind"
-          />
+          <div>
+            <EmptyState
+              title="No status updates"
+              description="Be the first to share what's on your mind"
+            />
+            <div className="mt-4 text-xs text-gray-400 text-center">
+              {/* Debug info for development */}
+              <p>
+                No statuses matched query.
+                <br />
+                Make sure your time, timezone, and session is correct.
+              </p>
+            </div>
+          </div>
         )}
       </div>
       
