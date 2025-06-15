@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { Plus, Camera, Type } from 'lucide-react';
+import { Plus, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,17 +8,20 @@ import NavBar from '@/components/NavBar';
 import EmptyState from '@/components/EmptyState';
 import { useCreateStatus, useStatusUpdates } from '@/services/statusService';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { uploadFile } from '@/services/fileUploadService';
 
 const Status: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [content, setContent] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const { data: statusUpdates = [], isLoading } = useStatusUpdates();
   const { mutate: createStatus, isPending } = useCreateStatus();
 
-  const handleCreateStatus = () => {
+  const handleCreateStatus = async () => {
     if (!content.trim() && !selectedFile) {
       toast({
         variant: "destructive",
@@ -29,10 +31,30 @@ const Status: React.FC = () => {
       return;
     }
 
+    let mediaUrl: string | undefined;
+
+    if (selectedFile) {
+      if (!user) {
+        toast({ variant: "destructive", title: "Authentication Error", description: "You must be logged in to post a status." });
+        return;
+      }
+      try {
+        const uploadedFile = await uploadFile({
+          bucket: 'status',
+          file: selectedFile,
+          userId: user.id,
+        });
+        mediaUrl = uploadedFile.url;
+      } catch (error) {
+        toast({ variant: "destructive", title: "Upload Failed", description: "Could not upload media. Please try again." });
+        return;
+      }
+    }
+
     createStatus(
       { 
         content: content.trim() || undefined, 
-        mediaUrl: selectedFile ? URL.createObjectURL(selectedFile) : undefined 
+        mediaUrl: mediaUrl
       },
       {
         onSuccess: () => {

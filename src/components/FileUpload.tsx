@@ -1,4 +1,3 @@
-
 import React, { useCallback, useState } from 'react';
 import { Upload, X, FileIcon, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,6 +21,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   children
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
+  const { toast } = useToast();
 
   const validateFile = (file: File): boolean => {
     if (file.size > maxSize) {
