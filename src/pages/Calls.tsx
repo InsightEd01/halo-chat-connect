@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Phone, Video, PhoneCall, Search, MoreVertical, Settings } from 'lucide-react';
+import { Phone, Video, PhoneCall, Search, MoreVertical, Settings, ArrowLeft } from 'lucide-react';
 import { useCallHistory, useInitiateCall } from '@/services/callService';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
