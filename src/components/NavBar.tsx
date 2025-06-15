@@ -1,82 +1,39 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { MessageSquare, Phone, ImageIcon, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useFriendRequests } from '@/services/friendService';
 
 const NavBar: React.FC = () => {
   const location = useLocation();
-  const [activePath, setActivePath] = useState('/chats');
-  const { data: friendRequests } = useFriendRequests();
-  
-  const pendingRequests = friendRequests?.received?.filter(req => req.status === 'pending') || [];
-  
+  const [active, setActive] = useState('/chats');
+
   useEffect(() => {
-    const path = location.pathname;
-    if (path.startsWith('/chat/')) {
-      setActivePath('/chats');
-    } else if (path.startsWith('/call/')) {
-      setActivePath('/calls');
-    } else {
-      setActivePath(path);
-    }
+    if (location.pathname.startsWith('/chat/')) setActive('/chats');
+    else if (location.pathname.startsWith('/calls')) setActive('/calls');
+    else if (location.pathname.startsWith('/status')) setActive('/status');
+    else setActive(location.pathname);
   }, [location]);
 
-  const isActive = (path: string) => activePath === path;
-
   return (
-    <div className="wispa-navbar">
-      <Link
-        to="/chats"
-        className={cn(
-          "wispa-navbar-item",
-          isActive('/chats') && "wispa-navbar-item-active"
-        )}
-      >
-        <MessageSquare className="h-6 w-6" />
-        <span className="text-xs mt-1">Chats</span>
+    <nav className="wispa-navbar">
+      <Link to="/chats" className={cn("wispa-navbar-item", active === '/chats' && "wispa-navbar-item-active")}>
+        <MessageSquare className="h-6 w-6 mb-1" />
+        Chats
       </Link>
-      
-      <Link
-        to="/status"
-        className={cn(
-          "wispa-navbar-item",
-          isActive('/status') && "wispa-navbar-item-active"
-        )}
-      >
-        <ImageIcon className="h-6 w-6" />
-        <span className="text-xs mt-1">Status</span>
+      <Link to="/status" className={cn("wispa-navbar-item", active === '/status' && "wispa-navbar-item-active")}>
+        <ImageIcon className="h-6 w-6 mb-1" />
+        Status
       </Link>
-      
-      <Link
-        to="/calls"
-        className={cn(
-          "wispa-navbar-item",
-          isActive('/calls') && "wispa-navbar-item-active"
-        )}
-      >
-        <Phone className="h-6 w-6" />
-        <span className="text-xs mt-1">Calls</span>
+      <Link to="/calls" className={cn("wispa-navbar-item", active === '/calls' && "wispa-navbar-item-active")}>
+        <Phone className="h-6 w-6 mb-1" />
+        Calls
       </Link>
-      
-      <Link
-        to="/profile"
-        className={cn(
-          "wispa-navbar-item relative",
-          isActive('/profile') && "wispa-navbar-item-active"
-        )}
-      >
-        <User className="h-6 w-6" />
-        {pendingRequests.length > 0 && (
-          <span className="absolute top-0 right-2 bg-red-500 text-white text-xs rounded-full h-4 min-w-[1rem] flex items-center justify-center">
-            {pendingRequests.length}
-          </span>
-        )}
-        <span className="text-xs mt-1">Profile</span>
+      <Link to="/profile" className={cn("wispa-navbar-item", active === '/profile' && "wispa-navbar-item-active")}>
+        <User className="h-6 w-6 mb-1" />
+        Profile
       </Link>
-    </div>
+    </nav>
   );
 };
-
 export default NavBar;

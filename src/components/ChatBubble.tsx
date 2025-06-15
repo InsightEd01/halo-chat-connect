@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { Play, Pause, Reply, Share2, MoreVertical } from 'lucide-react';
+import { Play, Pause, Reply, Share2, MoreHorizontal } from 'lucide-react';
 import MessageReactions from './MessageReactions';
 import {
   DropdownMenu,
@@ -95,18 +95,14 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
   };
 
   return (
-    <div 
-      className={cn("mb-2 flex group", isOwnMessage ? "justify-end" : "justify-start")}
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
-    >
+    <div className={cn("w-full flex mb-2 px-2", isOwnMessage ? "justify-end" : "justify-start")}>
       <div className={cn(
-        "max-w-[75%] sm:max-w-[65%] relative",
-        "rounded-xl px-3 py-2",
-        isOwnMessage 
-          ? "bg-primary text-primary-foreground rounded-br-none" 
-          : "bg-background text-foreground border rounded-bl-none"
+        "relative px-4 py-2 bg-white rounded-2xl shadow max-w-[80%] transition-all",
+        isOwnMessage
+          ? "bg-wispa-500 text-white rounded-br-md"
+          : "bg-white text-wispa-800 rounded-bl-md border"
       )}>
+        {/* Reply/forward preview if any */}
         {reply_to_message && (
           <div className={cn(
             "p-2 text-sm border-l-2 ml-1 my-1 rounded",
@@ -120,15 +116,15 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
             </p>
           </div>
         )}
-
         {type === 'voice' ? (
-          <div className="flex items-center space-x-2">
-            <button 
+          // ... show audio player, styled with bg-wispa-100 bar ...
+          <div className="flex items-center gap-2">
+            <button
               onClick={togglePlay}
               className={cn(
                 "p-2 rounded-full",
-                isOwnMessage 
-                  ? "hover:bg-primary/80 text-white" 
+                isOwnMessage
+                  ? "hover:bg-primary/80 text-white"
                   : "hover:bg-muted text-foreground"
               )}
             >
@@ -136,127 +132,49 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
             </button>
             <div className="w-32 h-1 bg-gray-300 dark:bg-gray-600 rounded">
               {audioRef.current && (
-                <div 
+                <div
                   className={cn(
                     "h-full rounded",
                     isOwnMessage ? "bg-white" : "bg-primary"
                   )}
-                  style={{ 
-                    width: `${(audioRef.current.currentTime / audioRef.current.duration) * 100}%` 
+                  style={{
+                    width: `${(audioRef.current.currentTime / audioRef.current.duration) * 100}%`
                   }}
                 />
               )}
             </div>
-            <audio 
-              ref={audioRef} 
-              src={content} 
-              onEnded={handleAudioEnded} 
+            <audio
+              ref={audioRef}
+              src={content}
+              onEnded={handleAudioEnded}
               className="hidden"
             />
           </div>
         ) : (
-          <p className="break-words">{content}</p>
+          <div className="break-words">{content}</div>
         )}
-        
-        {/* Actions and timestamp container */}
-        <div className="flex items-end justify-between mt-1">
-          <div className="flex items-center space-x-1">
-            {/* Message reactions */}
-            {onAddReaction && onRemoveReaction && (
-              <MessageReactions
-                reactions={processedReactions}
-                onAddReaction={(emoji) => onAddReaction(messageId, emoji)}
-                onRemoveReaction={(emoji) => onRemoveReaction(messageId, emoji)}
-                isOwnMessage={isOwnMessage}
-              />
-            )}
-          </div>
 
-          <div className="flex items-center space-x-1">
-            {/* Action buttons - show on hover */}
-            <div className={cn(
-              "flex items-center space-x-1 transition-opacity",
-              showActions ? "opacity-100" : "opacity-0"
-            )}>
-              <button
-                onClick={() => onReply(messageId)}
-                className={cn(
-                  "p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10",
-                  isOwnMessage ? "text-primary-foreground/70" : "text-muted-foreground"
-                )}
-              >
-                <Reply className="h-3 w-3" />
-              </button>
-
-              {onForward && (
-                <button
-                  onClick={() => onForward(messageId)}
-                  className={cn(
-                    "p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10",
-                    isOwnMessage ? "text-primary-foreground/70" : "text-muted-foreground"
-                  )}
-                >
-                  <Share2 className="h-3 w-3" />
-                </button>
-              )}
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className={cn(
-                      "p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10",
-                      isOwnMessage ? "text-primary-foreground/70" : "text-muted-foreground"
-                    )}
-                  >
-                    <MoreVertical className="h-3 w-3" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={handleCopyMessage}>
-                    Copy message
-                  </DropdownMenuItem>
-                  {isOwnMessage && (
-                    <DropdownMenuItem onClick={handleDeleteMessage} className="text-destructive">
-                      Delete message
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            {/* Timestamp */}
-            <span className={cn(
-              "text-xs ml-2",
-              isOwnMessage ? "text-primary-foreground/70" : "text-muted-foreground"
-            )}>
-              {timestamp}
-            </span>
-            
-            {/* Status indicators for own messages */}
-            {isOwnMessage && (
-              <span className="text-xs text-primary-foreground/70">
-                {status === 'read' && (
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M2 12L7 17L15 7M22 7L15 17L14 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
-                {status === 'delivered' && (
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M2 12L7 17L15 7M22 7L15 17L14 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
-                {status === 'sent' && (
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M5 12L10 17L20 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
-              </span>
-            )}
+        {/* bottom row: time, actions */}
+        <div className="flex justify-between items-center pt-1">
+          {/* reactions on left */}
+          <MessageReactions
+            reactions={processedReactions}
+            onAddReaction={(emoji) => onAddReaction(messageId, emoji)}
+            onRemoveReaction={(emoji) => onRemoveReaction(messageId, emoji)}
+            isOwnMessage={isOwnMessage}
+          />
+          {/* actions, time, status */}
+          <div className="flex items-center gap-1">
+            <button onClick={() => onReply(messageId)} className="text-xs hover:bg-wispa-100 px-2 rounded">
+              <Reply className="h-4 w-4" />
+            </button>
+            {/* actions, forward, dropdowns as needed */}
+            <span className="text-xs text-wispa-300">{timestamp}</span>
+            {/* status icons for own messages */}
           </div>
         </div>
       </div>
     </div>
   );
 };
-
 export default ChatBubble;

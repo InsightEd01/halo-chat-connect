@@ -308,15 +308,15 @@ const ChatDetail: React.FC = () => {
   const otherTypingUsers = typingUsers.filter(id => id !== user?.id);
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      <header className="bg-background border-b px-2 py-2 sm:px-4 flex items-center">
-        <Link to="/chats" className="mr-2 p-2 rounded-full hover:bg-muted">
-          <ArrowLeft className="h-5 w-5" />
+    <div className="wispa-container relative">
+      <header className="wispa-header">
+        <Link to="/chats" className="mr-2 p-2 rounded-full hover:bg-wispa-100">
+          <ArrowLeft className="h-5 w-5 text-wispa-500" />
         </Link>
-        <Avatar src={otherParticipant?.avatar_url || undefined} alt={otherParticipant?.username || ''} status={null} />
+        <Avatar src={otherParticipant?.avatar_url || undefined} alt={otherParticipant?.username || ''} size="sm" className="border" />
         <div className="ml-3">
-          <h2 className="font-medium">{otherParticipant?.username}</h2>
-          <p className="text-xs text-muted-foreground">
+          <h2 className="font-bold text-wispa-700">{otherParticipant?.username}</h2>
+          <p className="text-xs text-wispa-400">
             {otherTypingUsers.length > 0 ? 'Typing...' : 'Online'}
           </p>
         </div>
@@ -324,15 +324,15 @@ const ChatDetail: React.FC = () => {
         <div className="ml-auto flex space-x-1">
           <button 
             onClick={() => handleCall('video')}
-            className="p-2 rounded-full text-primary hover:bg-muted"
+            className="p-2 rounded-full text-primary hover:bg-wispa-100"
           >
-            <Video className="h-5 w-5" />
+            <Video className="h-5 w-5 text-wispa-500" />
           </button>
           <button 
             onClick={() => handleCall('audio')}
-            className="p-2 rounded-full text-primary hover:bg-muted"
+            className="p-2 rounded-full text-primary hover:bg-wispa-100"
           >
-            <Phone className="h-5 w-5" />
+            <Phone className="h-5 w-5 text-wispa-500" />
           </button>
           
           <DropdownMenu>
@@ -363,9 +363,9 @@ const ChatDetail: React.FC = () => {
         </div>
       </header>
       
-      <div className="flex-1 overflow-y-auto p-4 bg-gray-100 dark:bg-zinc-900">
+      <div className="flex-1 overflow-y-auto wispa-content-with-navbar px-2 py-3">
         {chat.messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500">
+          <div className="flex items-center justify-center h-full text-wispa-400">
             <p>No messages yet. Start the conversation!</p>
           </div>
         ) : (
@@ -398,7 +398,7 @@ const ChatDetail: React.FC = () => {
             ))}
             
             {otherTypingUsers.length > 0 && (
-              <div className="flex items-center space-x-2 text-gray-500 text-sm">
+              <div className="flex items-center space-x-2 text-wispa-400 text-sm">
                 <div className="animate-bounce">•</div>
                 <div className="animate-bounce delay-100">•</div>
                 <div className="animate-bounce delay-200">•</div>
@@ -409,14 +409,16 @@ const ChatDetail: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
       
-      <ChatInput
-        onSendMessage={handleSendMessage}
-        onStartTyping={() => setTyping(true)}
-        onStopTyping={() => setTyping(false)}
-        replyTo={replyTo}
-        onCancelReply={() => setReplyTo(null)}
-        disabled={isSending}
-      />
+      <div className="sticky bottom-0 bg-transparent z-10">
+        <ChatInput
+          onSendMessage={handleSendMessage}
+          onStartTyping={() => setTyping(true)}
+          onStopTyping={() => setTyping(false)}
+          replyTo={replyTo}
+          onCancelReply={() => setReplyTo(null)}
+          disabled={isSending}
+        />
+      </div>
       
       {showForwardDialog && (
         <ForwardMessageDialog 
