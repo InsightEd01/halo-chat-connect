@@ -659,6 +659,9 @@ export function useCreateChat() {
         queryKey: ['chat', chatId],
         exact: true
       });
+    },
+    onError: (error) => {
+      console.error('Error creating chat:', error);
     }
   });
 }
@@ -732,6 +735,9 @@ export function useSearchUsers(query: string) {
     enabled: !!user && !!query && query.trim() !== '',
     staleTime: 1000 * 60,
     refetchOnWindowFocus: false,
+    onError: (error) => {
+      console.error('[useSearchUsers] Query failed:', error);
+    }
   });
 }
 
@@ -764,6 +770,9 @@ export function useAddReaction() {
     onSuccess: (_, variables) => {
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['chat'] });
+    },
+    onError: (error) => {
+      console.error('[useAddReaction] Mutation failed:', error);
     }
   });
 }
@@ -794,6 +803,9 @@ export function useRemoveReaction() {
     onSuccess: (_, variables) => {
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['chat'] });
+    },
+    onError: (error) => {
+      console.error('[useRemoveReaction] Mutation failed:', error);
     }
   });
 }
