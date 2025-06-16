@@ -1,26 +1,31 @@
 import React, { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Camera, Image, MoreVertical, ChevronRight } from "lucide-react";
+import { PlusCircle, Upload, X, Camera } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStatusUpdates, useCreateStatus } from "@/services/statusService";
+import StatusStoryBar from "@/components/StatusStoryBar";
 import StatusViewer from "@/components/StatusViewer";
 import { Button } from "@/components/ui/button";
-import Avatar from "@/components/Avatar";
+import FileUpload from "@/components/FileUpload";
+import MediaPreview from "@/components/MediaPreview";
 import { uploadFile } from "@/services/fileUploadService";
 import { useToast } from "@/hooks/use-toast";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import NavBar from "@/components/NavBar";
-import { cn } from "@/lib/utils";
 
 const StatusPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const createStatus = useCreateStatus();
 
-  const [viewerOpen, setViewerOpen] = useState(false);
-  const [activeStatusId, setActiveStatusId] = useState<string | undefined>();
+  // For status creation UI
+  const [statusText, setStatusText] = useState("");
+  const [statusFile, setStatusFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+
+  const createStatus = useCreateStatus();
 
   // For status viewing
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -30,9 +35,8 @@ const StatusPage: React.FC = () => {
   const { data: statuses = [], isLoading } = useStatusUpdates();
 
   // Own status: use user_id to find
-  const myStatuses = user ? statuses.filter((s) => s.user_id === user.id) : [];
-  const recentStatuses = user ? statuses.filter((s) => s.user_id !== user.id && !s.viewed) : [];
-  const viewedStatuses = user ? statuses.filter((s) => s.user_id !== user.id && s.viewed) : [];
+  const myStatus = user ? statuses.find((s) => s.user_id === user.id) : undefined;
+  const otherStatuses = user ? statuses.filter((s) => s.user_id !== user.id) : statuses;
 
   // Build list for the story bar ("my status" first, then others)
   const storyBarData = [
@@ -76,26 +80,85 @@ const StatusPage: React.FC = () => {
   );
 
   // Handle file picking
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleFileSelect = (file: File) => {
+    setStatusFile(file);
+  };
+
+  // Remove picked file
+  const handleRemoveFile = () => {
+    setStatusFile(null);
+  };
+
+  // Submit status (Post)
+  const handlePostStatus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if ((!statusText || statusText.trim() === "") && !statusFile) {
+      toast({ title: "Add something!", description: "Please enter text or pick a file", variant: "destructive" });
+      return;
+    }
+    setIsUploading(true);
+    let mediaUrl: string | undefined;
+    try {
+      if (statusFile) {
+        // Upload file to 'status' bucket
+        const res = await uploadFile({ bucket: "status", file: statusFile, userId: user!.id });
+        mediaUrl = res.url;
+      }
+      await createStatus.mutateAsync({ content: statusText, mediaUrl });
+      setStatusText("");
+      setStatusFile(null);
+      toast({ title: "Status posted!", description: "Your story is now visible to contacts." });
+    } catch (err: any) {
+      toast({ title: "Failed to post status", description: err.message, variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileUpload = useCallback(async (file: File) => {
+    setStatusFile(file);
+  }, []);
+
+  const handleCameraCapture = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = "image/*;capture=camera";
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleSubmitStatus = async () => {
+    if (!statusFile && !statusText) {
+      toast({
+        title: "Error",
+        description: "Please add a photo, video, or text for your status",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsUploading(true);
     try {
-      const mediaUrl = await uploadFile(file, "status");
+      let fileUrl = "";
+      if (statusFile) {
+        fileUrl = await uploadFile(statusFile, "status");
+      }
+
       await createStatus.mutateAsync({
-        media_url: mediaUrl,
-        type: file.type.startsWith('video') ? 'video' : 'image'
+        text: statusText,
+        media_url: fileUrl,
+        type: statusFile ? (statusFile.type.startsWith('video') ? 'video' : 'image') : 'text'
       });
-      
+
+      setStatusText("");
+      setStatusFile(null);
       toast({
-        title: "Status updated",
-        description: "Your status has been posted successfully",
+        title: "Success",
+        description: "Status updated successfully",
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to post status. Please try again.",
+        description: "Failed to update status. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -103,62 +166,7 @@ const StatusPage: React.FC = () => {
     }
   };
 
-  const handleCameraClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.accept = "image/*;capture=camera";
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleGalleryClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.accept = "image/*,video/*";
-      fileInputRef.current.click();
-    }
-  };
-
-  const openStatus = (statusId: string) => {
-    setActiveStatusId(statusId);
-    setViewerOpen(true);
-  };
-
-  const renderStatusItem = (status: any, showViewedLabel = false) => (
-    <div
-      key={status.id}
-      onClick={() => openStatus(status.id)}
-      className="flex items-center px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-    >
-      <div className="relative">
-        <div className={cn(
-          "p-[2px] rounded-full",
-          status.viewed
-            ? "bg-gray-200 dark:bg-gray-700"
-            : "bg-gradient-to-tr from-blue-500 to-green-500"
-        )}>
-          <Avatar
-            user={status.user}
-            size="lg"
-            className="w-12 h-12"
-          />
-        </div>
-      </div>
-      <div className="ml-3 flex-1">
-        <div className="flex justify-between items-start">
-          <div>
-            <h3 className="text-sm font-semibold">
-              {status.user_id === user?.id ? "My Status" : status.user?.username || "User"}
-            </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {new Date(status.created_at).toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const { isOnline } = useNetworkStatus();
 
   if (!isOnline) {
     return (
@@ -185,73 +193,81 @@ const StatusPage: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-900">
+    <div className="container max-w-3xl mx-auto p-4 pb-20">
       <NavBar />
-      <div className="flex-1 overflow-y-auto pb-20">
-        {/* My Status Section */}
-        <div className="px-4 py-3">
-          <div className="flex items-center space-x-2">
+      {/* Status Creation Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+        <div className="flex flex-col space-y-4">
+          <div className="flex space-x-2">
+            <FileUpload
+              onFileSelect={handleFileUpload}
+              accept="image/*,video/*"
+              maxSize={20 * 1024 * 1024} // 20MB
+              bucketType="status"
+            >
+              <Button variant="ghost" size="icon">
+                <Upload className="h-5 w-5" />
+              </Button>
+            </FileUpload>
+
+            <Button variant="ghost" size="icon" onClick={handleCameraCapture}>
+              <Camera className="h-5 w-5" />
+            </Button>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file);
+              }}
+              accept="image/*;capture=camera"
+            />
+          </div>
+
+          {statusFile && (
             <div className="relative">
-              <Avatar
-                user={user}
-                size="lg"
-                className="w-12 h-12"
-              />
+              <MediaPreview file={statusFile} />
               <button
-                onClick={handleCameraClick}
-                className="absolute -right-1 -bottom-1 bg-blue-500 rounded-full p-1"
+                onClick={() => setStatusFile(null)}
+                className="absolute top-2 right-2 p-1 bg-gray-900/50 rounded-full"
               >
-                <Camera className="w-4 h-4 text-white" />
+                <X className="h-4 w-4 text-white" />
               </button>
             </div>
-            <div className="flex-1" onClick={() => myStatuses.length > 0 && openStatus(myStatuses[0].id)}>
-              <h3 className="text-sm font-semibold">My Status</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {myStatuses.length > 0 ? "Tap to view status" : "Tap to add status update"}
-              </p>
-            </div>
-            <div className="flex space-x-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleGalleryClick}
-                disabled={isUploading}
-              >
-                <Image className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
+          )}
+
+          <textarea
+            placeholder="What's on your mind?"
+            value={statusText}
+            onChange={(e) => setStatusText(e.target.value)}
+            className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+            rows={3}
+          />
+
+          <Button
+            onClick={handleSubmitStatus}
+            disabled={isUploading || (!statusFile && !statusText)}
+            className="w-full"
+          >
+            {isUploading ? "Uploading..." : "Post Status"}
+          </Button>
         </div>
-
-        {/* Recent Updates */}
-        {recentStatuses.length > 0 && (
-          <div>
-            <div className="px-4 py-2">
-              <h2 className="text-sm font-semibold text-blue-500">Recent Updates</h2>
-            </div>
-            {recentStatuses.map(status => renderStatusItem(status))}
-          </div>
-        )}
-
-        {/* Viewed Updates */}
-        {viewedStatuses.length > 0 && (
-          <div>
-            <div className="px-4 py-2">
-              <h2 className="text-sm font-semibold text-gray-500">Viewed Updates</h2>
-            </div>
-            {viewedStatuses.map(status => renderStatusItem(status, true))}
-          </div>
-        )}
       </div>
 
-      <input
-        type="file"
-        ref={fileInputRef}
-        className="hidden"
-        onChange={handleFileSelect}
-        accept="image/*,video/*"
-      />
+      {/* Status List Section */}
+      <div className="space-y-4">
+        <StatusStoryBar
+          stories={storyBarData}
+          onStoryClick={(storyId) => {
+            setActiveStatusId(storyId);
+            setViewerOpen(true);
+          }}
+        />
+      </div>
 
+      {/* Status Viewer */}
       <StatusViewer
         isOpen={viewerOpen}
         onClose={() => setViewerOpen(false)}
