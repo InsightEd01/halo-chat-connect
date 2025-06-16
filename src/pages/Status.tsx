@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { PlusCircle, Upload, X } from "lucide-react";
+import { PlusCircle, Upload, X, Camera } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStatusUpdates, useCreateStatus } from "@/services/statusService";
 import StatusStoryBar from "@/components/StatusStoryBar";
@@ -11,16 +11,19 @@ import MediaPreview from "@/components/MediaPreview";
 import { uploadFile } from "@/services/fileUploadService";
 import { useToast } from "@/hooks/use-toast";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import NavBar from "@/components/NavBar";
 
 const StatusPage: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // For status creation UI
   const [statusText, setStatusText] = useState("");
   const [statusFile, setStatusFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
 
   const createStatus = useCreateStatus();
 
@@ -112,6 +115,57 @@ const StatusPage: React.FC = () => {
     }
   };
 
+  const handleFileUpload = useCallback(async (file: File) => {
+    setStatusFile(file);
+  }, []);
+
+  const handleCameraCapture = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = "image/*;capture=camera";
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleSubmitStatus = async () => {
+    if (!statusFile && !statusText) {
+      toast({
+        title: "Error",
+        description: "Please add a photo, video, or text for your status",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      let fileUrl = "";
+      if (statusFile) {
+        fileUrl = await uploadFile(statusFile, "status");
+      }
+
+      await createStatus.mutateAsync({
+        text: statusText,
+        media_url: fileUrl,
+        type: statusFile ? (statusFile.type.startsWith('video') ? 'video' : 'image') : 'text'
+      });
+
+      setStatusText("");
+      setStatusFile(null);
+      toast({
+        title: "Success",
+        description: "Status updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update status. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const { isOnline } = useNetworkStatus();
 
   if (!isOnline) {
@@ -139,122 +193,87 @@ const StatusPage: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
-      {/* Header */}
-      <div className="px-4 py-4 flex items-center justify-between border-b">
-        <h1 className="text-xl font-bold text-wispa-500">Status</h1>
-        <Button variant="ghost" onClick={() => signOut()}>
-          Log out
-        </Button>
-      </div>
-
-      {/* Create Status (Story) UI */}
-      {user && (
-        <form
-          id="status-create-form"
-          onSubmit={handlePostStatus}
-          className="flex flex-col gap-3 px-4 py-4 border-b bg-gray-50"
-        >
-          <div className="flex gap-3 items-center">
-            <span className="font-medium mr-2">Create new status</span>
+    <div className="container max-w-3xl mx-auto p-4 pb-20">
+      <NavBar />
+      {/* Status Creation Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+        <div className="flex flex-col space-y-4">
+          <div className="flex space-x-2">
             <FileUpload
-              onFileSelect={handleFileSelect}
-              bucketType="status"
+              onFileSelect={handleFileUpload}
               accept="image/*,video/*"
-              maxSize={10 * 1024 * 1024}
-              className="flex-1"
+              maxSize={20 * 1024 * 1024} // 20MB
+              bucketType="status"
             >
-              <Button type="button" variant="outline" size="sm" className="flex gap-2 items-center">
-                <Upload className="h-4 w-4" />
-                {statusFile ? "Change" : "Add photo/video"}
+              <Button variant="ghost" size="icon">
+                <Upload className="h-5 w-5" />
               </Button>
             </FileUpload>
-            {statusFile && (
-              <Button type="button" variant="ghost" size="icon" onClick={handleRemoveFile}>
-                <X className="h-4 w-4" />
-              </Button>
-            )}
+
+            <Button variant="ghost" size="icon" onClick={handleCameraCapture}>
+              <Camera className="h-5 w-5" />
+            </Button>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file);
+              }}
+              accept="image/*;capture=camera"
+            />
           </div>
+
           {statusFile && (
-            <div className="mb-2">
-              <MediaPreview
-                src={URL.createObjectURL(statusFile)}
-                type={statusFile.type.startsWith("video") ? "video" : "image"}
-                name={statusFile.name}
-                showControls={false}
-              />
+            <div className="relative">
+              <MediaPreview file={statusFile} />
+              <button
+                onClick={() => setStatusFile(null)}
+                className="absolute top-2 right-2 p-1 bg-gray-900/50 rounded-full"
+              >
+                <X className="h-4 w-4 text-white" />
+              </button>
             </div>
           )}
+
           <textarea
-            className="border rounded-md px-3 py-2 focus:ring-2 focus:ring-wispa-500"
+            placeholder="What's on your mind?"
             value={statusText}
             onChange={(e) => setStatusText(e.target.value)}
-            rows={2}
-            placeholder="What's up?"
-            maxLength={300}
-            disabled={isUploading}
+            className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+            rows={3}
           />
-          <div className="flex items-center justify-end">
-            <Button type="submit" disabled={isUploading || (!statusText && !statusFile)}>
-              {isUploading ? "Posting..." : "Post Status"}
-            </Button>
-          </div>
-        </form>
-      )}
 
-      {/* Story Bar */}
-      <StatusStoryBar
-        statuses={storyBarData}
-        currentUserId={user?.id}
-        onSelect={handleStoryBarSelect}
-        myStatusId={myStatus?.id}
-      />
-
-      {/* List of all statuses with time/info */}
-      <main className="flex-1 overflow-y-auto px-4 py-6">
-        <h2 className="text-sm text-gray-400 mb-4">Recent Updates</h2>
-        <div className="space-y-6">
-          {otherStatuses.length === 0 && (
-            <div className="text-gray-500 text-center">No recent updates</div>
-          )}
-          {otherStatuses.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => handleStoryBarSelect(s.id)}
-              className="flex items-center gap-3 py-2 px-2 w-full rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-            >
-              <img
-                src={s.user?.avatar_url || "/default-avatar.png"}
-                alt={s.user?.username || "User"}
-                className="h-12 w-12 rounded-full object-cover"
-              />
-              <div className="flex-1">
-                <div className="font-medium text-gray-800 dark:text-gray-50">
-                  {s.user?.username || "User"}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {new Date(s.created_at).toLocaleString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </div>
-              </div>
-            </button>
-          ))}
+          <Button
+            onClick={handleSubmitStatus}
+            disabled={isUploading || (!statusFile && !statusText)}
+            className="w-full"
+          >
+            {isUploading ? "Uploading..." : "Post Status"}
+          </Button>
         </div>
-      </main>
+      </div>
 
-      {/* Status Viewer Modal */}
-      {activeStatusId && (
-        <StatusViewer
-          isOpen={viewerOpen}
-          onClose={() => setViewerOpen(false)}
-          initialStatusId={activeStatusId}
-          statuses={statuses}
+      {/* Status List Section */}
+      <div className="space-y-4">
+        <StatusStoryBar
+          stories={storyBarData}
+          onStoryClick={(storyId) => {
+            setActiveStatusId(storyId);
+            setViewerOpen(true);
+          }}
         />
-      )}
+      </div>
+
+      {/* Status Viewer */}
+      <StatusViewer
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        initialStatusId={activeStatusId}
+        statuses={statuses}
+      />
     </div>
   );
 };

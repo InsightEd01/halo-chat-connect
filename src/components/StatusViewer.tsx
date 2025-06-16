@@ -34,10 +34,20 @@ const StatusViewer: React.FC<StatusViewerProps> = ({
   const handleNext = () => {
     if (currentIndex < statuses.length - 1) {
       setCurrentIndex(currentIndex + 1);
+    } else {
+      onClose();
     }
   };
 
   const handlePrevious = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    }
+  };
+
+  if (!currentStatus) {
+    return null;
+  }{
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
     }

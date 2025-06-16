@@ -1,63 +1,75 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { PlusCircle } from 'lucide-react';
 import Avatar from './Avatar';
+import { cn } from '@/lib/utils';
 
 interface StatusStoryBarProps {
-  statuses: Array<{
+  stories: Array<{
     id: string;
     user: {
       username: string;
       avatar_url: string | null;
     };
+    hasUnviewed?: boolean;
     isOwn?: boolean;
+    timestamp?: string;
   }>;
-  currentUserId?: string;
-  onSelect?: (statusId: string) => void;
-  myStatusId?: string;
+  onStoryClick: (storyId: string) => void;
 }
 
 const StatusStoryBar: React.FC<StatusStoryBarProps> = ({
-  statuses,
-  currentUserId,
-  onSelect,
-  myStatusId,
+  stories,
+  onStoryClick,
 }) => {
   return (
-    <div className="flex gap-4 overflow-x-auto py-3 px-2 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-      {statuses.map((status) => (
+    <div className="flex gap-4 overflow-x-auto py-3 px-2 bg-white dark:bg-gray-900 rounded-lg">
+      {stories.map((story) => (
         <button
-          type="button"
-          key={status.id}
-          onClick={() => onSelect && onSelect(status.id)}
-          className="flex flex-col items-center focus:outline-none hover:scale-105 transition"
+          key={story.id}
+          onClick={() => onStoryClick(story.id)}
+          className="flex flex-col items-center min-w-[72px] focus:outline-none group"
         >
-          <div className={`relative`}>
-            <span
-              className={
-                "block p-1 rounded-full border-2 border-wispa-500 " +
-                (status.isOwn
-                  ? "border-dashed"
-                  : "border-solid animate-pulse"
-                )
-              }
+          <div className="relative mb-1">
+            <div
+              className={cn(
+                "p-[2px] rounded-full",
+                story.hasUnviewed
+                  ? "bg-gradient-to-tr from-blue-500 to-green-500"
+                  : story.isOwn
+                  ? "bg-gray-200 dark:bg-gray-700"
+                  : "bg-gray-200 dark:bg-gray-700",
+                "ring-2 ring-offset-2 ring-transparent group-hover:ring-blue-500/50"
+              )}
             >
-              <Avatar
-                src={status.user.avatar_url || undefined}
-                alt={status.user.username}
-                size="lg"
-                className=""
-              />
-            </span>
-            {status.isOwn && (
-              <span className="absolute bottom-0 right-0 h-4 w-4 bg-wispa-500 rounded-full flex items-center justify-center border-2 border-white">
-                <span className="text-xs text-white font-bold">+</span>
-              </span>
-            )}
+              <div className="relative rounded-full overflow-hidden">
+                {story.isOwn && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 group-hover:bg-black/50">
+                    <PlusCircle className="w-6 h-6 text-white" />
+                  </div>
+                )}
+                <Avatar
+                  user={{ avatar_url: story.user.avatar_url }}
+                  size="lg"
+                  className={cn(
+                    "w-14 h-14",
+                    story.isOwn && "opacity-75"
+                  )}
+                />
+              </div>
+            </div>
           </div>
-          <span className="mt-1 text-xs font-medium text-gray-700 dark:text-gray-200 truncate w-14 text-center">
-            {status.isOwn ? "My Status" : status.user.username}
+          <span className="text-xs truncate w-full text-center dark:text-gray-300">
+            {story.isOwn ? "My Status" : story.user.username}
           </span>
+          {story.timestamp && (
+            <span className="text-[10px] text-gray-500 dark:text-gray-400">
+              {new Date(story.timestamp).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </span>
+          )}
         </button>
       ))}
     </div>
