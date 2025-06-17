@@ -47,14 +47,6 @@ const StatusViewer: React.FC<StatusViewerProps> = ({
 
   if (!currentStatus) {
     return null;
-  }{
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    }
-  };
-
-  if (!currentStatus) {
-    return null;
   }
 
   return (

@@ -7,8 +7,9 @@ import { FriendRequest } from '@/services/friendService';
 
 interface FriendRequestCardProps {
   request: FriendRequest;
-  onAccept: (requestId: string) => void;
-  onReject: (requestId: string) => void;
+  onAccept: () => void;
+  onReject: () => void;
+  isResponding: boolean;
   isOutgoing?: boolean;
 }
 
@@ -16,6 +17,7 @@ const FriendRequestCard: React.FC<FriendRequestCardProps> = ({
   request,
   onAccept,
   onReject,
+  isResponding,
   isOutgoing = false
 }) => {
   const profile = isOutgoing ? request.recipient : request.sender;
@@ -43,15 +45,17 @@ const FriendRequestCard: React.FC<FriendRequestCardProps> = ({
           <div className="flex space-x-2">
             <Button 
               size="sm"
-              onClick={() => onAccept(request.id)}
+              onClick={onAccept}
               className="bg-wispa-500 hover:bg-wispa-600"
+              disabled={isResponding}
             >
               <Check className="h-4 w-4 mr-1" /> Accept
             </Button>
             <Button 
               size="sm"
               variant="outline" 
-              onClick={() => onReject(request.id)}
+              onClick={onReject}
+              disabled={isResponding}
             >
               <X className="h-4 w-4 mr-1" /> Reject
             </Button>
