@@ -7,6 +7,7 @@ import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import logo from '/wispachat logo.jpg';
 
 const Auth: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
@@ -16,6 +17,12 @@ const Auth: React.FC = () => {
   const [userId, setUserId] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Simple form validity check for button states
+  const isFormValid =
+    email.trim() !== '' &&
+    password.trim() !== '' &&
+    (activeTab === 'signin' || username.trim() !== '');
   
   const { user, signIn, signUp } = useAuth();
 
@@ -69,19 +76,16 @@ const Auth: React.FC = () => {
   };
 
   return (
-    <div className="wispa-container bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-wispa-50 to-wispa-100 dark:from-gray-900 dark:to-gray-800">
       <div className="flex flex-col h-full">
         <div className="flex-1 flex flex-col items-center justify-center p-6">
-          <div className="w-full max-w-md">
+          <div className="w-full max-w-md bg-white dark:bg-gray-900 shadow-xl rounded-xl p-8">
             <div className="text-center mb-8">
-              <div className="inline-block p-4 bg-wispa-100 rounded-full mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#FF5722" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2v5Z"></path>
-                  <path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"></path>
-                </svg>
+              <div className="flex justify-center mb-4">
+                <img src={logo} alt="WispaChat Logo" className="h-16 w-16 rounded-2xl shadow-lg border-4 border-white dark:border-gray-900 bg-white" />
               </div>
-              <h1 className="text-3xl font-bold text-gray-900">WispaChat</h1>
-              <p className="mt-2 text-gray-600">
+              <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">WispaChat</h1>
+              <p className="mt-2 text-gray-600 dark:text-gray-300 text-base">
                 {activeTab === "signup" ? 'Create your account' : 'Welcome back'}
               </p>
             </div>
@@ -139,7 +143,7 @@ const Auth: React.FC = () => {
                   <Button 
                     type="submit" 
                     className="w-full bg-wispa-500 hover:bg-wispa-600"
-                    disabled={loading}
+                    disabled={loading || !isFormValid}
                   >
                     {loading ? 'Signing in...' : 'Sign In'}
                   </Button>
@@ -234,7 +238,7 @@ const Auth: React.FC = () => {
                   <Button 
                     type="submit" 
                     className="w-full bg-wispa-500 hover:bg-wispa-600"
-                    disabled={loading}
+                    disabled={loading || !isFormValid}
                   >
                     {loading ? 'Creating account...' : 'Create Account'}
                   </Button>
