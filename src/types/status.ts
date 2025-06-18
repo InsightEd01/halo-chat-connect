@@ -13,7 +13,8 @@ export interface StatusUpdate {
   media_url: string | null;
   created_at: string;
   expires_at: string;
-  viewed_by: string[];
-  reactions?: Record<string, string[]>; // emoji -> user_ids
-  user?: StatusUser;
+  reactions: Record<string, string[]>;
+  views: string[];
+  viewCount: number;
+  user: StatusUser;
 }

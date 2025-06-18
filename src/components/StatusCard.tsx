@@ -117,14 +117,10 @@ const StatusCard: React.FC<StatusCardProps> = ({
       {/* Footer Actions */}
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
         <div className="flex items-center justify-center gap-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white hover:bg-white/20 flex items-center gap-2"
-          >
+          <div className="flex items-center text-sm text-gray-200 gap-1">
             <Eye className="h-4 w-4" />
-            <span>{status.viewed_by.length}</span>
-          </Button>
+            <span>{status.viewCount}</span>
+          </div>
           
           {user && (
             <StatusReactions

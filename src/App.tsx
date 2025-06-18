@@ -12,7 +12,7 @@ import Auth from "./pages/Auth";
 import ChatList from "./pages/ChatList";
 import ChatDetail from "./pages/ChatDetail";
 import Calls from "./pages/Calls";
-import Status from "./pages/Status";
+import StatusComingSoon from "./pages/StatusComingSoon";
 import NewChat from "./pages/NewChat";
 import Friends from "./pages/Friends";
 import Profile from "./pages/Profile";
@@ -47,7 +47,7 @@ const App = () => (
                 <Route path="/chat/:id" element={<ChatDetail />} />
                 <Route path="/calls" element={<Calls />} />
                 <Route path="/call/:id" element={<CallPage />} /> {/* Use CallPage */}
-                <Route path="/status" element={<Status />} />
+                <Route path="/status" element={<StatusComingSoon />} />
                 <Route path="/new-chat" element={<NewChat />} />
                 <Route path="/friends" element={<Friends />} />
                 <Route path="/profile" element={<Profile />} />

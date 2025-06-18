@@ -92,9 +92,9 @@ const Friends: React.FC = () => {
         <TabsContent value="friends" className="mt-4">
           {isLoadingFriendships ? (
             <div className="flex justify-center">Loading friends...</div>
-          ) : friendships && friendships.length > 0 ? (
+          ) : filteredFriends && filteredFriends.length > 0 ? (
             <div className="space-y-4">
-              {friendships.map((friendship) => (
+              {filteredFriends.map((friendship) => (
                 <UserCard
                   key={friendship.friend.id}
                   user={friendship.friend}
@@ -104,7 +104,7 @@ const Friends: React.FC = () => {
             </div>
           ) : (
             <EmptyState
-              icon={Users}
+              icon={<Users className="h-12 w-12 text-gray-400" />}
               title="No friends yet"
               description="When you add friends, they'll show up here."
             />
@@ -114,9 +114,9 @@ const Friends: React.FC = () => {
         <TabsContent value="pending" className="mt-4">
           {isLoadingRequests ? (
             <div className="flex justify-center">Loading requests...</div>
-          ) : friendRequests && friendRequests.length > 0 ? (
+          ) : pendingRequests && pendingRequests.length > 0 ? (
             <div className="space-y-4">
-              {friendRequests.map((request) => (
+              {pendingRequests.map((request) => (
                 <FriendRequestCard
                   key={request.id}
                   request={request}
@@ -128,7 +128,7 @@ const Friends: React.FC = () => {
             </div>
           ) : (
             <EmptyState
-              icon={UserCheck}
+              icon={<UserCheck className="h-12 w-12 text-gray-400" />}
               title="No pending requests"
               description="Friend requests you receive will show up here."
             />
@@ -155,13 +155,13 @@ const Friends: React.FC = () => {
             </div>
           ) : debouncedQuery ? (
             <EmptyState
-              icon={Search}
+              icon={<Search className="h-12 w-12 text-gray-400" />}
               title="No users found"
               description="Try searching with a different term."
             />
           ) : (
             <EmptyState
-              icon={UserPlus}
+              icon={<UserPlus className="h-12 w-12 text-gray-400" />}
               title="Search for users"
               description="Search by username to find and add new friends."
             />
