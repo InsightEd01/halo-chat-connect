@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import NavBar from '@/components/NavBar';
 import { uploadFile, deleteFile } from '@/services/fileUploadService';
+import ProfileStatusDashboard from './ProfileStatusDashboard';
 
 const Profile: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -265,6 +266,15 @@ const Profile: React.FC = () => {
           >
             Sign Out
           </Button>
+        </div>
+
+        {/* Status Dashboard Button */}
+        <div className="mt-8 flex justify-center">
+          <Link to="/profile/status-dashboard">
+            <Button className="bg-[#ff6200] hover:bg-[#ff7f32] text-white rounded-full px-6 py-2 shadow">
+              My Status Dashboard
+            </Button>
+          </Link>
         </div>
       </div>
 
