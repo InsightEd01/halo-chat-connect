@@ -9,12 +9,12 @@ const CreateStatusModal = ({ user, onClose, onPost }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-xl animate-fade-in">
-        <h2 className="text-xl font-bold mb-4 text-[#ff6200]">Create Status</h2>
+      <div className="bg-white dark:bg-gray-900 p-6 rounded-lg w-full max-w-md shadow-xl animate-fade-in border border-border">
+        <h2 className="text-xl font-bold mb-4 text-primary">Create Status</h2>
         <select
           value={contentType}
           onChange={(e) => setContentType(e.target.value)}
-          className="w-full p-2 mb-4 border rounded focus:ring-2 focus:ring-[#ff6200]"
+          className="w-full p-2 mb-4 border rounded focus:ring-2 focus:ring-primary bg-background text-foreground"
         >
           <option value="image">Image</option>
           <option value="video">Video</option>
@@ -24,14 +24,14 @@ const CreateStatusModal = ({ user, onClose, onPost }) => {
           type="file"
           accept={contentType === 'image' ? 'image/*' : contentType === 'video' ? 'video/*' : 'audio/*'}
           onChange={(e) => setFile(e.target.files[0])}
-          className="w-full mb-4 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-[#ffe6e6] file:text-[#ff6200]"
+          className="w-full mb-4 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-muted file:text-foreground"
         />
         <input
           type="text"
           placeholder="Add a caption..."
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
-          className="w-full p-2 mb-4 border rounded focus:ring-2 focus:ring-[#ff6200]"
+          className="w-full p-2 mb-4 border rounded focus:ring-2 focus:ring-primary bg-background text-foreground"
         />
         <div className="mb-4 flex gap-4">
           <label className="flex items-center gap-2 cursor-pointer">
@@ -40,7 +40,7 @@ const CreateStatusModal = ({ user, onClose, onPost }) => {
               value="friends"
               checked={visibility === 'friends'}
               onChange={() => setVisibility('friends')}
-              className="accent-[#ff6200]"
+              className="accent-primary"
             /> Friends Only
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
@@ -49,16 +49,16 @@ const CreateStatusModal = ({ user, onClose, onPost }) => {
               value="public"
               checked={visibility === 'public'}
               onChange={() => setVisibility('public')}
-              className="accent-[#ff6200]"
+              className="accent-primary"
             /> Public
           </label>
         </div>
         <div className="flex justify-end gap-4 mt-2">
-          <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">Cancel</button>
+          <button onClick={onClose} className="wispa-btn wispa-btn-secondary">Cancel</button>
           <button
             onClick={onPost}
             disabled={uploading || !file}
-            className="px-4 py-2 bg-[#ff6200] text-white rounded shadow disabled:opacity-50 hover:bg-[#ff7f32] transition"
+            className="wispa-btn wispa-btn-primary shadow disabled:opacity-50"
           >
             {uploading ? 'Posting...' : 'Post'}
           </button>
