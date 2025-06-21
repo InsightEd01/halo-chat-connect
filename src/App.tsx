@@ -18,6 +18,7 @@ import ArchivedChats from "./pages/ArchivedChats";
 import NotFound from "./pages/NotFound";
 import CallPage from "./pages/CallPage"; // Import the new call page component
 import StatusPage from "./pages/Status"; // Import the Status page component
+import ProfileStatusDashboard from "./pages/ProfileStatusDashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -49,6 +50,7 @@ const App = () => (
                 <Route path="/new-chat" element={<NewChat />} />
                 <Route path="/friends" element={<Friends />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/profile/status-dashboard" element={<ProfileStatusDashboard />} />
                 <Route path="/archived-chats" element={<ArchivedChats />} />
                 <Route path="/status" element={<StatusPage />} /> {/* Add StatusPage route */}
               </Route>
