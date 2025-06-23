@@ -1,7 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { StatusUpdate } from "@/types/status";
+import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 
 // Fetch status updates
 export function useStatusUpdates() {
@@ -186,5 +187,39 @@ export function useDeleteStatus() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['status-updates'] });
     },
+  });
+}
+
+// Infinite scroll for status updates
+export function useInfiniteStatusUpdates(pageSize = 10, viewMode = 'friends') {
+  const { user } = useAuth();
+  return useInfiniteQuery<StatusUpdate[], Error>({
+    queryKey: ['status-updates', viewMode],
+    initialPageParam: null,
+    queryFn: async ({ pageParam = null }) => {
+      let query: PostgrestFilterBuilder<any, any, any> = supabase
+        .from('status_updates')
+        .select(`
+          id, user_id, content, media_url, created_at, expires_at,
+          user:profiles(username, avatar_url)
+        `)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(pageSize);
+      if (pageParam) {
+        query = query.lt('created_at', pageParam);
+      }
+      if (viewMode === 'public') {
+        query = query.eq('is_public', true);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as StatusUpdate[];
+    },
+    getNextPageParam: (lastPage) => {
+      if (!lastPage || !Array.isArray(lastPage) || lastPage.length === 0) return undefined;
+      return lastPage[lastPage.length - 1].created_at;
+    },
+    enabled: !!user,
   });
 }

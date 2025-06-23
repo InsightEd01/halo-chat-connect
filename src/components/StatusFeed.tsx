@@ -3,18 +3,37 @@ import CreateStatusModal from "./CreateStatusModal";
 import NavBar from "@/components/NavBar";
 import StatusStoryBar from "./StatusStoryBar";
 import Avatar from "@/components/Avatar";
+import { useInfiniteStatusUpdates } from '@/services/statusService';
+import { StatusUpdate } from '@/types/status';
 
 const StatusPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'friends' | 'public'>('friends');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [statuses, setStatuses] = useState([]);
-  // TODO: Get user from context or props
-  const user = { id: "demo-user" };
+  const user = { id: "demo-user" }; // TODO: Get user from context or props
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    status
+  } = useInfiniteStatusUpdates(10, viewMode);
 
-  useEffect(() => {
-    // TODO: Fetch statuses from Supabase
-    setStatuses([]);
-  }, [viewMode, user.id]);
+  const statuses: StatusUpdate[] = data ? data.pages.flat() as StatusUpdate[] : [];
+
+  // Infinite scroll handler
+  React.useEffect(() => {
+    const handleScroll = () => {
+      if (
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 300 &&
+        hasNextPage &&
+        !isFetchingNextPage
+      ) {
+        fetchNextPage();
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return (
     <div className="container max-w-md mx-auto p-0 pb-20 bg-white">
@@ -51,7 +70,7 @@ const StatusPage: React.FC = () => {
         <div className="flex-1 overflow-y-auto px-0 pb-4 bg-background dark:bg-gray-900">
           {/* Modern Facebook-like Feed */}
           <div className="flex flex-col gap-4 px-2 pt-2">
-            {statuses.length === 0 ? (
+            {statuses.length === 0 && status === 'success' ? (
               <div className="flex items-center justify-center h-full text-muted-foreground text-lg">No statuses yet.</div>
             ) : (
               statuses.map((status, idx) => (
@@ -63,20 +82,19 @@ const StatusPage: React.FC = () => {
                       <span className="text-xs text-muted-foreground">{status.created_at ? new Date(status.created_at).toLocaleString() : ''}</span>
                     </div>
                   </div>
-                  {status.caption && <div className="text-base text-foreground mb-1">{status.caption}</div>}
-                  {status.content_url && status.content_type === 'image' && (
-                    <img src={status.content_url} alt="status" className="rounded-lg max-h-72 w-full object-cover border" />
-                  )}
-                  {status.content_url && status.content_type === 'video' && (
-                    <video src={status.content_url} controls className="rounded-lg max-h-72 w-full object-cover border" />
-                  )}
-                  {status.content_url && status.content_type === 'audio' && (
-                    <audio src={status.content_url} controls className="w-full my-2" />
+                  {status.content && <div className="text-base text-foreground mb-1">{status.content}</div>}
+                  {status.media_url && (
+                    status.media_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                      <img src={status.media_url} alt="status" className="rounded-lg max-h-72 w-full object-cover border" />
+                    ) : status.media_url.match(/\.(mp4|webm|mov)$/i) ? (
+                      <video src={status.media_url} controls className="rounded-lg max-h-72 w-full object-cover border" />
+                    ) : status.media_url.match(/\.(mp3|wav|ogg)$/i) ? (
+                      <audio src={status.media_url} controls className="w-full my-2" />
+                    ) : null
                   )}
                   <div className="flex items-center gap-6 mt-2 text-xs text-muted-foreground">
-                    <span>👁️ {status.status_views?.length || 0}</span>
-                    <span>👍 {status.status_reactions?.length || 0}</span>
-                    <span>💬 {status.status_comments?.length || 0}</span>
+                    <span>👁️ {status.views?.length || 0}</span>
+                    <span>👍 {Object.values(status.reactions || {}).reduce((a, b) => a + b.length, 0)}</span>
                   </div>
                   <div className="flex gap-2 mt-2">
                     <button className="wispa-btn wispa-btn-secondary text-xs">Like</button>
@@ -85,6 +103,9 @@ const StatusPage: React.FC = () => {
                   </div>
                 </div>
               ))
+            )}
+            {isFetchingNextPage && (
+              <div className="flex items-center justify-center py-4 text-muted-foreground">Loading more...</div>
             )}
           </div>
         </div>
